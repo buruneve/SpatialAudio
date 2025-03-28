@@ -1,54 +1,47 @@
 #playAudio.py
 
+## # %%
+
 #imports
 import sounddevice as sd
 import numpy as np
 
-
-
-getDeviceInfo = sd.query_devices(kind = 'output')
-#print(getDeviceInfo)  #dictionary (key, value)
-
 #settings
+# all 4 speakers: [1,2,3,4] [LF, RF, LB, RB]
+# front two: [1,2]; back two: [3,4]
+
+userInput = input('Which speakers do you want to play? \nEnter values separated by space: ')
+userInput = userInput.split()
+whichSpeakers = np.array(userInput, dtype=int) 
+
+
 fs = 44100
 sd.default.samplerate = fs
-#sd.default.channels = 8
+sd.default.channels = 4
 
-print(dict(getDeviceInfo))
+numSpeakers = np.array([1,2,3,4]) # total number of speakers
+f = np.array([200, 300]) #, 400, 500, 600])
+t = np.arange(0, 5, 1/44100)
+print(f); print(len(t)); #print(np.shape(t))
 
-x = getDeviceInfo["index"]
-print(x)
+# view device info
+getDeviceInfo = sd.query_devices(kind = 'output')
+#print(dict(getDeviceInfo)) #dictionary (key, value)
+
+x = getDeviceInfo["index"] # device ID 
+#print(x)
 
 
-f = np.array([200, 300, 400, 500, 600])
-t = np.arange(0, 3, 1/44100)
-print(f)
-print(np.shape(t))
+# play sound 
+indx=0 # indexing starts at 0
+for idxF in f:
+    xt = np.sin(2*np.pi*f[indx]*t) 
+    indx = indx+1
 
-xt1 = np.sin(2*np.pi*f[0]*t)
-xt2 = np.sin(2*np.pi*f[1]*t)
-xt3 = np.sin(2*np.pi*f[2]*t)
-xt4 = np.sin(2*np.pi*f[3]*t)
-print(np.shape(xt1))
+    for spkr in whichSpeakers:
+        xtt = np.zeros((len(t),len(numSpeakers)))
+        xtt[:,spkr-1]= np.array(xt) # spkr-1 bc of indexing 
 
-xtt = np.zeros((132300,4))
-print(np.shape(xtt))
+        sd.play(xtt, mapping=[1,2,3,4])   
+        sd.wait() # wait for sound to play
 
-xtt[:,0]= np.array(xt1)
-sd.play(xtt, mapping=[1,1,1,1]) #,2,3,4]) 
-sd.wait() # wait for sound to play
-
-xtt = np.zeros((132300,4))
-xtt[:,1] = np.array(xt2)
-sd.play(xtt,mapping=[1,2,3,4])
-sd.wait()
-
-xtt = np.zeros((132300,4))
-xtt[:,2] = np.array(xt3)
-sd.play(xtt, mapping=[1,2,3,4])
-sd.wait() 
-
-xtt = np.zeros((132300,4))
-xtt[:,3] = np.array(xt4)
-sd.play(xtt, mapping=[1,2,3,4])
-sd.wait() 
