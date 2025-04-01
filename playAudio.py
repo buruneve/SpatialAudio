@@ -27,7 +27,7 @@ freq = np.array(userInputFreq, dtype=int)
 fs = 44100
 sd.default.samplerate = fs
 sd.default.channels = userInputNumSpeakers
-t = np.arange(0, 5, 1/44100)
+t = np.arange(0, 5, 1/fs)
 
 
 # view device info
