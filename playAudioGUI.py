@@ -25,13 +25,14 @@ screen_height = root.winfo_screenheight()
 
 # root window title & dimension
 root.title("PLAY AUDIO")
-root.geometry(f"{int(screen_width*.4)}" + 'x' + f"{int(screen_height*.8)}")  #width x height+x+y
+root.geometry(f"{int(screen_width*.4)}" + 'x' + f"{int(screen_height*.5)}")  #width x height+x+y
 
 # questions for user
 questions = [
     'Total number of speakers:',
     'Which speakers to play \n(may select multiple):',
-    'Frequencies to play \n (may select multiple):'
+    'Frequencies to play \n (may select multiple):',
+    'Weight scale:'
 ]
 
 for idx, qs in enumerate(questions):
@@ -52,6 +53,11 @@ btn3_list = []
 totSpkrs=[]
 wchSpkrList=[]
 wchFreqList=[]
+
+input = {}
+e = tk.Entry(root)
+e.grid(row =3, column = 1, padx=5, pady=5 )
+input = e
 
 
 # select and change button color functions
@@ -91,17 +97,36 @@ def playAudio():
     #print(newFreq)
 
 
+    #freq = [300]
+    wt =np.array([1, 0, 0.5, 0])
+    xtt = np.zeros((len(t),4))
+    print(np.shape(xtt))
+
+    #numSpeakers = np.array([1,2,3,4])
+
     for idxF in newFreq:
         xt = np.sin(2*np.pi*idxF*t) 
- 
-        for spkr in newWhichSpeakers:
-            #print(spkr)
-            xtt = np.zeros((len(t),int(numSpeakers)))
-            xtt[:,spkr]= np.array(xt) 
-            #print(np.shape(xtt))
 
-            sd.play(xtt, mapping=[1,2,3,4])   
-            sd.wait() # wait for sound to play
+        for idxSpkr in newWhichSpeakers:
+            xtt[:,idxSpkr-1]= np.array(xt)
+
+    sd.play(wt*xtt, mapping=[1,2,3,4])   
+    sd.wait() # wait for sound to play
+
+
+    # commented out
+    # this section plays sounds out of speakers one by one
+    # for idxF in newFreq:
+    #     xt = np.sin(2*np.pi*idxF*t) 
+ 
+    #     for spkr in newWhichSpeakers:
+    #         #print(spkr)
+    #         xtt = np.zeros((len(t),int(numSpeakers)))
+    #         xtt[:,spkr]= np.array(xt) 
+    #         #print(np.shape(xtt))
+
+    #         sd.play(xtt, mapping=[1,2,3,4])   
+    #         sd.wait() # wait for sound to play
 
 
 idxR = 0
@@ -137,7 +162,7 @@ for fIdx,f in enumerate(freq):
 
 # # PLAY AUDIO button 
 startButton = tk.Button(root, text = 'PLAY AUDIO', bg ='red', fg= 'black',  width=10, height=1, padx=5, pady=10, command=playAudio) 
-startButton.grid(row=3, column=0, sticky='e')
+startButton.grid(row=5, column=0, sticky='e')
 
 
 
