@@ -2,171 +2,299 @@
 
 # import libraries
 import tkinter as tk
+from tkinter import ttk 
 import numpy as np
 import sounddevice as sd
-
+from PIL import ImageTk, Image
+import time
+from scipy.signal import butter, filtfilt
 
 # settings
-fs = 44100
+fs = 44100 
 sd.default.samplerate = fs
 sd.default.channels = 4
 t = np.arange(0, 5, 1/fs)
+numSpeakers = np.array([1,2,3,4]) 
+whichSpeakers = np.array(["1", "2", "3", "4"]) #np.array(["Left Front", "Right Front", "Left Back", "Right Back"]) 
+
+# settings user will select
+wt = np.array(['1', '1','1','1'])  #np.array([1.0, -0.5, 0.5, 0]) #amplitude # if want default
+freq = np.array([200, 300, 400, 500, 600])
+signalType = ['tone', 'white noise', 'arbitrary sound']
 
 # create root/main window
-root= tk.Tk()
-frame = tk.Frame(root)
+root= tk.Tk() #main window
 
-screen_width = root.winfo_screenwidth()
-screen_height = root.winfo_screenheight()
+# create frames to group/organize widgets
+## questions
+frame1 = tk.Frame(master= root)#, borderwidth=50) 
+frame1.grid(row = 0, column=0, sticky='W')
+frame2 = tk.Frame(master= root)
+frame2.grid(row = 1, column=0, sticky='W')
 
-#print('screen_width:', screen_width )
-#print('screen_height:', screen_height)
+#weights
+frame3 = tk.Frame(master= root)
+frame3.grid(row = 0, column=1, sticky='w')
+
+#freq buttons
+frame4 = tk.Frame(master= root)
+frame4.grid(row = 1, column=1, sticky='W')
+
+#start button
+frame5 = tk.Frame(master= root)
+frame5.grid(row = 4, column=1, sticky='E')
+
+#drop-down menu
+frame6 = tk.Frame(master= root)
+frame6.grid(row = 3, column=0) #, sticky='W')
+
+#image
+frame7 = tk.Frame(master= root)
+frame7.grid(row = 5, column=0, sticky='W')
 
 
-# root window title & dimension
+qframe= [frame1, frame2] # store frames in a list
+
+#get computers screen dimensions 
+screen_width = root.winfo_screenwidth()    #print('screen_width:', screen_width )
+screen_height = root.winfo_screenheight()  #print('screen_height:', screen_height)
+
+
+# root window title & set display dimension to fit users screen
 root.title("PLAY AUDIO")
-root.geometry(f"{int(screen_width*.4)}" + 'x' + f"{int(screen_height*.5)}")  #width x height+x+y
+root.geometry(f"{int(screen_width*.5)}" + 'x' + f"{int(screen_height*.5)}")  #width x height+x+y
 
 # questions for user
 questions = [
-    'Total number of speakers:',
-    'Which speakers to play \n(may select multiple):',
-    'Frequencies to play \n (may select multiple):',
-    'Weight scale:'
+    'Amplitude (weight scale):',
+    'Frequencies (may select multiple):'
 ]
 
+# create labels that prompt user for preferred settings 
 for idx, qs in enumerate(questions):
-    lbl = tk.Label(root, text = qs, font = 'times 12 bold')
-    lbl.grid(row = idx, column = 0, sticky = 'w')
-
-#options for user to select from
-numSpeakers = np.array([4]) #np.array([1,2,3,4])
-whichSpeakers = np.array(["Left Front", "Right Front", "Left Back", "Right Back"])   #1,2,3,4
-freq = np.array([200, 300, 400, 500, 600])
+    lbl = tk.Label(master=qframe[idx], text = qs, font = 'times 12 bold')
+    lbl.grid(row = idx, column = 0, sticky = 'w') #idx+1
 
 
-# Lists to hold the button objects
-btn_list = [] 
-btn2_list = []
-btn3_list = []
+# store new inputs
+getInputWts = []
 
-totSpkrs=[]
-wchSpkrList=[]
-wchFreqList=[]
+# get user input for weights
+# each box corresponds to specific speaker
+# [1,2,3,4] = ["Left Front", "Right Front", "Left Back", "Right Back"]
+def getVals():
+    getInputWts.clear()
 
-input = {}
-e = tk.Entry(root)
-e.grid(row =3, column = 1, padx=5, pady=5 )
-input = e
+    for idx in range(4):  # 4 speakers
+        newWts = storeInputWt[idx].get()   # use get to access users input
+        getInputWts.append(float(newWts))   # store in list 
+    
+    print(getInputWts)
+    print(type(getInputWts))
 
 
-# select and change button color functions
+# store in lists 
+freqBtn_list = [] # list to hold the button object
+freqIdxList=[]  # list to hold users preferred frequency
+storeInputWt = []  # store entry object as list
 
-def chng_btn_color_NumSpkr(idx):
-    #nSpkrs = int(btn_list[idx].cget('text')) #get text for the selected button
-    #sd.default.channels = nSpkrs
-    #getList = nSpkrs
+# create user input entry fields/widgets
+for idx, weight in enumerate(wt):
+    # create entry field
+    e = tk.Entry(frame3, width =10) # , font=('ariel 15'))
 
-    #print(type(idx))
-    totSpkrs.append(idx)
-    #print(totSpkrs)
-    #print(type(totSpkrs))
-    btn_list[idx].config(relief = 'sunken',background= 'white' )
- 
-def chng_btn_color_WchSpkr(idx):
-    #print(idx)
-    wchSpkrList.append(idx)
-    #print(wchSpkrList)
-    #print(type(wchSpkrList))
-    btn2_list[idx].config(relief = 'sunken', background= 'white')
+    e.insert(0,weight) # default values 
+    e.grid(row=0, column= idx+1, padx=5, pady=5,sticky = 'w' )  #+1 for indexing 
+    storeInputWt.append(e) #append user's input to list
 
-def chng_btn_color_WchFreq(idx):
-    wchFreqList.append(idx)
-    #print(wchFreqList)
-    btn3_list[idx].config(relief = 'sunken',background= 'white')
+print(type(storeInputWt))
 
+
+selectIdx = []
+def selectBtn(idx):
+    freqIdxList.append(idx)  # store index of button selected
+    print(str("idx:"),idx)
+    print(str('freq list:'),freqIdxList)
+    print(freqIdxList.count(idx))
+
+    # check if index count is odd or even
+    # if odd, sink btn (as in selected)
+    # if even, raise btn  (as in deselect)
+    if freqIdxList.count(idx) % 2 == 1:
+        freqBtn_list[idx].config(relief = 'sunken')  #select btn
+
+        if idx not in selectIdx:
+            selectIdx.append(idx)
+            print(str('selected idx list:'),selectIdx)
+
+    else:
+        freqBtn_list[idx].config(relief = 'raised')  #deselect btn
+        selectIdx.remove(idx)  #pop did not work here 
+        print(str('updated idx list:'),selectIdx)
+
+# create drop-down menu
+cb = ttk.Combobox(frame6, state="readonly", values= signalType)
+cb.set("Signal Type")
+cb.grid(row=3,column=0)
+
+#cb.current()
+
+signalSelect = cb.get()
+print(signalSelect)
+
+# bind the selected value changes
+def getSignal(event):
+    print(cb.get())
+
+cb.bind('<<ComboboxSelected>>', getSignal)
 
 # play sound 
 def playAudio():
 
-    newWhichSpeakers = wchSpkrList
-    print(str('speakers:'), str(newWhichSpeakers), str('aka:'), str(whichSpeakers[wchSpkrList]))
-    #print(newWhichSpeakers)
-    newFreq = freq[wchFreqList]
+    newFreq = freq[freqIdxList] 
     print(str('frequency:'), str(newFreq))
     #print(newFreq)
 
+    wt =getInputWts #np.array([1, 0, 0.5, 0])
+    print(str('weight:'), str(wt))
+    # print(len(wt))
 
-    #freq = [300]
-    wt =np.array([1, 0, 0.5, 0])
-    xtt = np.zeros((len(t),4))
-    print(np.shape(xtt))
 
-    #numSpeakers = np.array([1,2,3,4])
+    #xtt = np.zeros((len(t),4))
+    # #play sound simultaneously 
+    # for idxF in newFreq:
+    #     print(str('idxF:'), idxF)
+    #     xt = np.sin(2*np.pi*idxF*t) /10
+    #     xt = np.random.normal(0,1,len(xt))/ 40
 
-    for idxF in newFreq:
-        xt = np.sin(2*np.pi*idxF*t) 
+    #     b, a = butter(2, idxF/22050, btype='high', analog=False)
+    #     xt = filtfilt(b, a, xt)
+    #     # indx = indx+1
 
-        for idxSpkr in newWhichSpeakers:
-            xtt[:,idxSpkr-1]= np.array(xt)
+    #     for idxSpkr in numSpeakers:
+    #         print('idxSpkr:', idxSpkr)
+    #         xtt[:,idxSpkr-1]= np.array(xt)
+    #         print(np.shape(xtt))
 
-    sd.play(wt*xtt, mapping=[1,2,3,4])   
-    sd.wait() # wait for sound to play
-
+    # sd.play(wt*xtt, mapping=[1,2,3,4])   
+    # sd.wait() # wait for sound to play
+    # time.sleep(1)
 
     # commented out
     # this section plays sounds out of speakers one by one
-    # for idxF in newFreq:
-    #     xt = np.sin(2*np.pi*idxF*t) 
- 
-    #     for spkr in newWhichSpeakers:
-    #         #print(spkr)
-    #         xtt = np.zeros((len(t),int(numSpeakers)))
-    #         xtt[:,spkr]= np.array(xt) 
-    #         #print(np.shape(xtt))
+    # weight values will reflect number of speakers as well as
+    # which speaker to play sound from 
+    for valF in newFreq:
+        for idxWt, valWt in enumerate(wt):
+            print('valWt:', valWt)
+            xt = valWt*np.sin(2*np.pi*valF*t) #/10
 
-    #         sd.play(xtt, mapping=[1,2,3,4])   
-    #         sd.wait() # wait for sound to play
+            #noise
+            xt = np.random.normal(0,1,len(xt))/40
+            b, a = butter(2, valF/22050, btype='high', analog=False)
+            xt = filtfilt(b, a, xt)
+
+            xtt = np.zeros((len(t),4))
+            xtt[:,idxWt]= np.array(xt) 
+            #print(np.shape(xtt))
+
+            sd.play(xtt, mapping=[1,2,3,4])   
+            sd.wait() # wait for sound to play
+            time.sleep(1)
+
+            # don't need this section -- leave for reference
+            # replacing number of speakers with weights
+            # the weight values reflect which speaker 
+            # for spkr in numSpeakers:
+            #     #print(spkr)
+            #     xtt = np.zeros((len(t),4))
+            #     xtt[:,spkr-1]= np.array(xt) 
+            #     #print(np.shape(xtt))
+
+            #     sd.play(xtt, mapping=[1,2,3,4])   
+            #     sd.wait() # wait for sound to play
+            #     time.sleep(1)
 
 
-idxR = 0
-idxC= 1
-for nSpkrIdx, numSpkr in enumerate(numSpeakers): #enumerate to get index, value
-
-    button = tk.Button(root, text=str(numSpkr), width=10, height=2, command=lambda idx=nSpkrIdx: chng_btn_color_NumSpkr(idx))
-    button.grid(row=idxR, column=idxC, padx=5, pady=10)
-    idxC = idxC+1
-
-    btn_list.append(button)  # Append button to list
-
-
-idxR = 1
-idxC= 1
-for spkrIdx, wchSpkr in enumerate(whichSpeakers):
-
-    button2 = tk.Button(root, text=str(wchSpkr), width=10, height=2,  command=lambda idx=spkrIdx: chng_btn_color_WchSpkr(idx))   
-    button2.grid(row=idxR, column=idxC, padx=5, pady=10)
-    idxC = idxC+1
-
-    btn2_list.append(button2)
-
-idxR = 2
+idxR = 1 
 idxC= 1
 for fIdx,f in enumerate(freq):
+    # create button widget
+    button3 = tk.Button(master=frame4, text=str(f), width=10, height=2, command=lambda idx=fIdx: selectBtn(idx))
 
-    button3 = tk.Button(root, text=str(f), width=10, height=2, command=lambda idx=fIdx: chng_btn_color_WchFreq(idx))
-    button3.grid(row=idxR, column=idxC, padx=5, pady=10)
+    button3.grid(row=idxR, column=idxC, padx=5, pady=10) #,  sticky="W")
     idxC = idxC+1
-    btn3_list.append(button3)
+    freqBtn_list.append(button3)  # append button object to list
 
 
 # # PLAY AUDIO button 
-startButton = tk.Button(root, text = 'PLAY AUDIO', bg ='red', fg= 'black',  width=10, height=1, padx=5, pady=10, command=playAudio) 
-startButton.grid(row=5, column=0, sticky='e')
+startButton = tk.Button(master=frame5, text = 'PLAY AUDIO', bg ='red', fg= 'black',  width=8, height=1, padx=10, pady=10, command=lambda: [getVals(),playAudio(), getSignalType]) #getVals())  # command=lambda: [getVals(inputWt)]#command=playAudio) 
+startButton.grid(row=4, column=1) #, sticky=tk.W)
 
+## add image to GUI 
+canvas = tk.Canvas(root) #), width=25, height = 25)
 
-
+img = Image.open("head_top_view.jpg")
+img = img.resize((200, 200))
+img = ImageTk.PhotoImage(img)
+tl = tk.Label(master=frame7, image=img) #, anchor = tks.E)
+#canvas.create_image(20,20, anchor=tk.NW, image=img)
+tl.grid(row=5) #, column = 1)
 
 
 
 root.mainloop()
+
+
+#####################################################################################
+##### removed lines of code 
+#####################################################################################
+
+# create labels that prompt user for preferred settings 
+# lbl = tk.Label(master=frame, text = questions[0], font = 'times 12 bold')
+# lbl.grid(row=0, column=0) #pack(side=tk.LEFT)
+
+# lbl = tk.Label(master=frame2, text = questions[1], font = 'times 12 bold')
+# lbl.grid(row=0, column=1) #pack(side=tk.LEFT)
+# select and change button color functions
+
+# def chng_btn_color_NumSpkr(idx):
+#     #nSpkrs = int(btn_list[idx].cget('text')) #get text for the selected button
+#     #sd.default.channels = nSpkrs
+#     #getList = nSpkrs
+
+#     #print(type(idx))
+#     totSpkrs.append(idx)
+#     #print(totSpkrs)
+#     #print(type(totSpkrs))
+#     btn_list[idx].config(relief = 'sunken',background= 'white' )
+ 
+# def chng_btn_color_WchSpkr(idx):
+#     #print(idx)
+#     wchSpkrList.append(idx)
+#     #print(wchSpkrList)
+#     #print(type(wchSpkrList))
+#     btn2_list[idx].config(relief = 'sunken', background= 'white')
+
+
+
+# idxR = 0
+# idxC= 1
+# for nSpkrIdx, numSpkr in enumerate(numSpeakers): #enumerate to get index, value
+
+#     button = tk.Button(root, text=str(numSpkr), width=10, height=2, command=lambda idx=nSpkrIdx: chng_btn_color_NumSpkr(idx))
+#     button.grid(row=idxR, column=idxC, padx=5, pady=10)
+#     idxC = idxC+1
+
+#     btn_list.append(button)  # Append button to list
+
+
+# idxR = 2
+# idxC= 1
+# for spkrIdx, wchSpkr in enumerate(whichSpeakers):
+
+#     button2 = tk.Button(root, text=str(wchSpkr), width=10, height=2,  command=lambda idx=spkrIdx: chng_btn_color_WchSpkr(idx))   
+#     button2.grid(row=idxR, column=idxC, padx=5, pady=10)
+#     idxC = idxC+1
+
+#     btn2_list.append(button2)
