@@ -8,6 +8,14 @@ import sounddevice as sd
 from PIL import ImageTk, Image
 import time
 from scipy.signal import butter, filtfilt
+import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
+from pathlib import Path
+from scipy.io import wavfile
+import os
+from playsound import playsound
+
 
 # settings
 fs = 44100 
@@ -48,10 +56,21 @@ frame5.grid(row = 4, column=1, sticky='E')
 frame6 = tk.Frame(master= root)
 frame6.grid(row = 3, column=0) #, sticky='W')
 
-#image
-frame7 = tk.Frame(master= root)
-frame7.grid(row = 5, column=0, sticky='W')
+# root frame
+rootFrame = tk.Frame(master= root, height = 300, width = 300,bg = 'red') # highlightbackground="red", highlightthickness=2) 
+rootFrame.grid(row = 5, column = 1,sticky = 'W')
 
+#image
+frame7 = tk.Frame(master= rootFrame, height = 200, width = 200) #,highlightbackground="red", highlightthickness=1) #, bg = 'white')
+frame7.place(x=50,y=50) #grid(row = 5, column=0, sticky='W')
+
+#spectrogram
+frame8 = tk.Frame(master= root)
+frame8.grid(row = 5, column=2, sticky='W')
+
+#scrollbar
+frame9 = tk.Frame(master= rootFrame)
+frame9.place(x=10,y=10) #grid(row = 5, column=1, sticky='W')
 
 qframe= [frame1, frame2] # store frames in a list
 
@@ -62,7 +81,7 @@ screen_height = root.winfo_screenheight()  #print('screen_height:', screen_heigh
 
 # root window title & set display dimension to fit users screen
 root.title("PLAY AUDIO")
-root.geometry(f"{int(screen_width*.5)}" + 'x' + f"{int(screen_height*.5)}")  #width x height+x+y
+root.geometry(f"{int(screen_width*.7)}" + 'x' + f"{int(screen_height*.5)}")  #width x height+x+y
 
 # questions for user
 questions = [
@@ -137,85 +156,121 @@ cb = ttk.Combobox(frame6, state="readonly", values= signalType)
 cb.set("Signal Type")
 cb.grid(row=3,column=0)
 
-#cb.current()
 
-signalSelect = cb.get()
-print(signalSelect)
+#signalSelect = cb.get()
+getSignalType = []
 
 # bind the selected value changes
 def getSignal(event):
-    print(cb.get())
+    s = cb.get()
+    getSignalType.append(s)
 
 cb.bind('<<ComboboxSelected>>', getSignal)
+#print('get signal:', getSignalType)
 
 # play sound 
 def playAudio():
+    s = getSignalType
+    s = ' '.join(s) # convert list to string
+    print(s)
+    #print(type(s))
 
-    newFreq = freq[freqIdxList] 
-    print(str('frequency:'), str(newFreq))
-    #print(newFreq)
+    fig = Figure(figsize=(5,3))
+    canvas2 = FigureCanvasTkAgg(fig,frame8)
+    p1 = fig.add_subplot(111) 
+    print(p1)
+    
+    if s == 'arbitrary sound':
+        # prompt user to load in wave file
+        samplerate, data = wavfile.read('voice.wav')
+        print(samplerate)
+        print(data)
+        print(np.shape(data))
 
-    wt =getInputWts #np.array([1, 0, 0.5, 0])
-    print(str('weight:'), str(wt))
-    # print(len(wt))
+        length = data.shape[0] / samplerate
+        print(f"length = {length}s")
 
+        time = np.linspace(0., length, data.shape[0])
 
-    #xtt = np.zeros((len(t),4))
-    # #play sound simultaneously 
-    # for idxF in newFreq:
-    #     print(str('idxF:'), idxF)
-    #     xt = np.sin(2*np.pi*idxF*t) /10
-    #     xt = np.random.normal(0,1,len(xt))/ 40
+        #playsound('car-horn.wav')
 
-    #     b, a = butter(2, idxF/22050, btype='high', analog=False)
-    #     xt = filtfilt(b, a, xt)
-    #     # indx = indx+1
+        p1.plot(time,data)
+        #canvas2 = FigureCanvasTkAgg(fig,frame8)
+        #toolbar = NavigationToolbar2Tk(canvas2, frame8)
+        #toolbar.update()
 
-    #     for idxSpkr in numSpeakers:
-    #         print('idxSpkr:', idxSpkr)
-    #         xtt[:,idxSpkr-1]= np.array(xt)
-    #         print(np.shape(xtt))
+        canvas2.draw()
+        canvas2.get_tk_widget().pack() 
 
-    # sd.play(wt*xtt, mapping=[1,2,3,4])   
-    # sd.wait() # wait for sound to play
-    # time.sleep(1)
+        canvas2.flush_events()
 
-    # commented out
-    # this section plays sounds out of speakers one by one
-    # weight values will reflect number of speakers as well as
-    # which speaker to play sound from 
-    for valF in newFreq:
-        for idxWt, valWt in enumerate(wt):
-            print('valWt:', valWt)
-            xt = valWt*np.sin(2*np.pi*valF*t) #/10
+        sd.play(data, mapping=[1,2,3,4])   
+        sd.wait()
 
-            #noise
-            xt = np.random.normal(0,1,len(xt))/40
-            b, a = butter(2, valF/22050, btype='high', analog=False)
-            xt = filtfilt(b, a, xt)
+    else:
+        newFreq = freq[freqIdxList] 
+        print(str('frequency:'), str(newFreq))
+        #print(newFreq)
 
-            xtt = np.zeros((len(t),4))
-            xtt[:,idxWt]= np.array(xt) 
-            #print(np.shape(xtt))
+        wt =getInputWts #np.array([1, 0, 0.5, 0])
+        #print(str('weight:'), str(wt))
+        # print(len(wt))
 
+        fig = Figure(figsize=(5,3))
+        canvas2 = FigureCanvasTkAgg(fig,frame8)
+        p1 = fig.add_subplot(111) 
+        # "111" means "1x1 grid, first subplot" and "234" means "2x3 grid, 4th subplot".
+
+        xtt = np.zeros((len(t),4))
+        checkFreq = []
+        # commented out
+        # this section plays sounds out of speakers one by one
+        # weight values will reflect number of speakers as well as
+        # which speaker to play sound from 
+        for valF in newFreq:
+            for idxWt, valWt in enumerate(wt):
+                print('valWt:', valWt)
+
+                if s == 'tone':
+                    xt = valWt*np.sin(2*np.pi*valF*t) #/10
+
+                if s == 'white noise':
+                    #noise
+                    xt = np.random.normal(0,1,220500)/40
+                    b, a = butter(2, valF/22050, btype='high', analog=False)
+                    xt = valWt*filtfilt(b, a, xt)
+                
+
+                #xtt = np.zeros((len(t),4))
+                xtt[:,idxWt-1]= np.array(xt) 
+                #print(np.shape(xtt))
+
+                # sd.play(xtt, mapping=[1,2,3,4])   
+                # sd.wait() # wait for sound to play
+                # time.sleep(1)
+
+                if valF not in checkFreq:
+                    checkFreq.append(valF)
+
+                    p1.plot(t, xt)
+                    #canvas2 = FigureCanvasTkAgg(fig,frame8)
+                    #toolbar = NavigationToolbar2Tk(canvas2, frame8)
+                    #toolbar.update()
+
+                    canvas2.draw()
+                    canvas2.get_tk_widget().pack() 
+
+                    canvas2.flush_events()
+                
+                #fig.clf()
+
+                # sd.play(xtt, mapping=[1,2,3,4])   
+                # sd.wait() # wait for sound to play
+                #time.sleep(1)
             sd.play(xtt, mapping=[1,2,3,4])   
             sd.wait() # wait for sound to play
-            time.sleep(1)
 
-            # don't need this section -- leave for reference
-            # replacing number of speakers with weights
-            # the weight values reflect which speaker 
-            # for spkr in numSpeakers:
-            #     #print(spkr)
-            #     xtt = np.zeros((len(t),4))
-            #     xtt[:,spkr-1]= np.array(xt) 
-            #     #print(np.shape(xtt))
-
-            #     sd.play(xtt, mapping=[1,2,3,4])   
-            #     sd.wait() # wait for sound to play
-            #     time.sleep(1)
-
-
+           
 idxR = 1 
 idxC= 1
 for fIdx,f in enumerate(freq):
@@ -228,11 +283,12 @@ for fIdx,f in enumerate(freq):
 
 
 # # PLAY AUDIO button 
-startButton = tk.Button(master=frame5, text = 'PLAY AUDIO', bg ='red', fg= 'black',  width=8, height=1, padx=10, pady=10, command=lambda: [getVals(),playAudio(), getSignalType]) #getVals())  # command=lambda: [getVals(inputWt)]#command=playAudio) 
+startButton = tk.Button(master=frame5, text = 'PLAY AUDIO', bg ='red', fg= 'black',  width=8, height=1, padx=10, pady=10, command=lambda: [getVals(),playAudio()]) #getVals())  # command=lambda: [getVals(inputWt)]#command=playAudio) 
 startButton.grid(row=4, column=1) #, sticky=tk.W)
 
 ## add image to GUI 
-canvas = tk.Canvas(root) #), width=25, height = 25)
+#first create a canvas 
+canvas = tk.Canvas(rootFrame, width=250, height = 250)
 
 img = Image.open("head_top_view.jpg")
 img = img.resize((200, 200))
@@ -241,9 +297,46 @@ tl = tk.Label(master=frame7, image=img) #, anchor = tks.E)
 #canvas.create_image(20,20, anchor=tk.NW, image=img)
 tl.grid(row=5) #, column = 1)
 
+# add scrollbar
+angle  = np.array([0,360,5])
+scrollbar = tk.Scrollbar(frame9)
+scrollbar.grid(row=5, column=1)
 
+lst = tk.Listbox(rootFrame, yscrollcommand=scrollbar.set)
+scrollbar.config(command = angle)
+
+
+# ## add spectrogram to GUI 
+# tt = np.arange(0, 3, .01)
+# f = np.array([200, 300])
+# fig = Figure(figsize=(5,3))
+# canvas2 = FigureCanvasTkAgg(fig,frame8)
+
+# for i in f:
+#     xt = np.sin(2*np.pi*i*t) 
+
+#     #noise
+#     xt = np.random.normal(0,1,len(xt))/40
+#     b, a = butter(2, 300/22050, btype='high', analog=False)
+#     xt = filtfilt(b, a, xt)
+
+#     fig.add_subplot(111).plot(t, xt)
+#     #canvas2 = FigureCanvasTkAgg(fig,frame8)
+#     #toolbar = NavigationToolbar2Tk(canvas2, frame8)
+#     #toolbar.update()
+
+#     canvas2.draw()
+#     canvas2.get_tk_widget().pack() 
+
+#     canvas2.flush_events()
+#    # canvas2.draw_idle()
 
 root.mainloop()
+
+
+
+
+
 
 
 #####################################################################################
@@ -298,3 +391,52 @@ root.mainloop()
 #     idxC = idxC+1
 
 #     btn2_list.append(button2)
+
+
+
+# sound out of all speakers simultaneously 
+#xtt = np.zeros((len(t),4))
+# #play sound simultaneously 
+# for idxF in newFreq:
+#     print(str('idxF:'), idxF)
+#     xt = np.sin(2*np.pi*idxF*t) /10
+#     xt = np.random.normal(0,1,len(xt))/ 40
+
+#     b, a = butter(2, idxF/22050, btype='high', analog=False)
+#     xt = filtfilt(b, a, xt)
+#     # indx = indx+1
+
+#     for idxSpkr in numSpeakers:
+#         print('idxSpkr:', idxSpkr)
+#         xtt[:,idxSpkr-1]= np.array(xt)
+#         print(np.shape(xtt))
+
+# sd.play(wt*xtt, mapping=[1,2,3,4])   
+# sd.wait() # wait for sound to play
+# time.sleep(1)
+
+
+# don't need this section -- leave for reference
+# replacing number of speakers with weights
+# the weight values reflect which speaker 
+# for spkr in numSpeakers:
+#     #print(spkr)
+#     xtt = np.zeros((len(t),4))
+#     xtt[:,spkr-1]= np.array(xt) 
+#     #print(np.shape(xtt))
+
+#     sd.play(xtt, mapping=[1,2,3,4])   
+#     sd.wait() # wait for sound to play
+#     time.sleep(1)
+
+
+# path = str(Path.home() / "Downloads")
+# print(path)
+# #dir_list = os.listdir(path)
+
+# # return all files as a list
+# for file in os.listdir(path):
+#     # check the files which are end with specific extension
+#     if file.endswith('.wav'):
+#         # print path name of selected files
+#         print(file)
