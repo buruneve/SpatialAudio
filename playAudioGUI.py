@@ -221,7 +221,7 @@ def playAudio():
         p1 = fig.add_subplot(111) 
         # "111" means "1x1 grid, first subplot" and "234" means "2x3 grid, 4th subplot".
 
-        xtt = np.zeros((len(t),4))
+        xtt = np.zeros((4,len(t)))
         checkFreq = []
         # commented out
         # this section plays sounds out of speakers one by one
@@ -233,16 +233,18 @@ def playAudio():
 
                 if s == 'tone':
                     xt = valWt*np.sin(2*np.pi*valF*t) #/10
+                    #xtt[idxWt,:]= np.array(xt) 
 
                 if s == 'white noise':
                     #noise
                     xt = np.random.normal(0,1,220500)/40
                     b, a = butter(2, valF/22050, btype='high', analog=False)
                     xt = valWt*filtfilt(b, a, xt)
-                
+                    #xtt[idxWt,:]= np.array(xt) 
+
+                xtt[idxWt,:]= np.array(xt) 
 
                 #xtt = np.zeros((len(t),4))
-                xtt[:,idxWt-1]= np.array(xt) 
                 #print(np.shape(xtt))
 
                 # sd.play(xtt, mapping=[1,2,3,4])   
