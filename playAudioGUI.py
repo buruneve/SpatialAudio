@@ -114,8 +114,6 @@ class PlayAudio: #defines new class name PlayAudio
 
         self.createEntries()
         self.createButtons()
-        #self.getEntryVals()
-       # self.createButtons()
 
 
         # create labels that prompt user for preferred settings 
@@ -177,15 +175,6 @@ class PlayAudio: #defines new class name PlayAudio
 
         self.xt = np.shape(self.t)
         self.xtt = np.zeros((self.totalSpeakers,len(self.t)))
-
-        #self.pause = time.sleep(3)
-
-        #self.plotImage()
-
-
-    ###
-    ###     a method is a function that is inside a class
-    ####
 
 
     # get user input for weights
