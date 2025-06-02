@@ -20,25 +20,27 @@ import os
 import numpy as np
 import math
 
+import threading
 
 
 class PlayAudio(): #defines new class name PlayAudio
     def __init__(self, root):   # sets up an instance of a class
+        self.root=root
 
         #### self is the instance of a class
 
         #settings
         self.fs = 44100 # samplerate
         self.totalSpeakers = 4
-        self.t = np.arange(0,5,1/self.fs)
+        self.t = np.arange(0,0.1,1/self.fs) #0,5
         self.whichSpeakers = np.array(["1", "2", "3", "4"])
         self.wt = np.array(['1', '1','1','1'])  #default amplitude
-        print(self.wt)
         self.freq = np.array([200, 300, 400, 500, 600])
         self.signalType = ['tone', 'white noise', 'arbitrary sound']
         self.img = mpimg.imread("head_topview.jpg")
         self.NFFT = 1024  
         # self.samplerate, self.data = wavfile.read('car-horn.wav')
+
         
         self.xt = np.shape(self.t)
         self.xtt = np.zeros((self.totalSpeakers,len(self.t)))
@@ -51,10 +53,10 @@ class PlayAudio(): #defines new class name PlayAudio
         self.plot_frame = tk.LabelFrame(root, padx=10, pady=10)
         self.plot_frame.pack(side='top', fill="both", expand=True,  padx=10, pady=10)
 
-                # # PLAY AUDIO button 
-        self.startButton = tk.Button(master=self.plot_frame, text = 'PLAY AUDIO', bg ='red', fg= 'black',  
-                                     width=8, height=1, padx=5, pady=5, command=lambda: [self.determineSpeaker,self.displayPlots()]) 
-        self.startButton.pack(side="top", padx=10)  #grid(row = 2, column=3, sticky= 'E') #, sticky=tk.W)
+        # # # PLAY AUDIO button 
+        # self.startButton = tk.Button(master=self.plot_frame, text = 'PLAY AUDIO', bg ='red', fg= 'black',  
+        #                              width=8, height=1, padx=5, pady=5, command=lambda: [self.displayPlots()])  #self.updateSpeaker,
+        # self.startButton.pack(side="top", padx=10)  #grid(row = 2, column=3, sticky= 'E') #, sticky=tk.W)
 
 
         # store in lists
@@ -74,6 +76,15 @@ class PlayAudio(): #defines new class name PlayAudio
         self.createPlots()
         self.readWavFile()
 
+        self.phase = 0
+        self.channel = ''  # which speaker 
+        
+        # Start audio stream: 4 output channels
+        self.stream = sd.OutputStream(callback=self.audioCallback, channels=4, samplerate=self.fs)
+        #self.stream.start()     
+
+        # Close stream on exit
+        #self.root.protocol("WM_DELETE_WINDOW", self.close)
 
     def createDropDownMenu(self):
         # create drop-down menu
@@ -123,7 +134,7 @@ class PlayAudio(): #defines new class name PlayAudio
 
             if idx not in self.selectIdx:
                 self.selectIdx.append(idx)
-                print(str('selected idx list:'),self.selectIdx)
+                #print(str('selected idx list:'),self.selectIdx)
 
         else:
             self.freqBtn_list[idx].config(relief = 'raised')  #deselect btn
@@ -131,7 +142,7 @@ class PlayAudio(): #defines new class name PlayAudio
             print(str('updated idx list:'),self.selectIdx)
 
     def createEntries(self):
-         # create frame to group/organize widgets
+        # create frame to group/organize widgets
         frameWtEntries = tk.Frame(master=self.input_frame,pady=5) #,padx=10, pady=10)
         frameWtEntries.grid(row = 2, column=0, sticky='W')
 
@@ -139,7 +150,7 @@ class PlayAudio(): #defines new class name PlayAudio
         lbl = tk.Label(master=frameWtEntries, text='Amplitude (weight scale):') #, font = 'times 11 bold')
         lbl.grid(row=2, column=0, sticky='w', pady=5, padx=5)
 
-    # create user input entry fields/widgets
+        # create user input entry fields/widgets
         for idx, weight in enumerate(self.wt):
             # create entry field
             e = tk.Entry(frameWtEntries, width =10) # , font=('ariel 15'))
@@ -149,35 +160,68 @@ class PlayAudio(): #defines new class name PlayAudio
             self.storeInputWt.append(e) #append user's input to list
     
     def createSliders(self):
-
+        # create slider frame
         sliderFrame = tk.Frame(self.plot_frame)
         sliderFrame.pack(side="left", padx=10)
-        #slider
-        self.slider = tk.Scale(sliderFrame, from_=0, to=360,command=self.updateCirclePlot) 
+
+        #slider1
+        self.slider = tk.Scale(sliderFrame, from_=0, to=360,command=self.sliderCallback) #updateSpeaker
         self.slider.pack(side='left')
-        self.slider2 = tk.Scale(sliderFrame, from_=0, to=360,command = self.updateCirclePlot)
-        self.slider2.pack(side='right')
+
+        # #slider2
+        # self.slider2 = tk.Scale(sliderFrame, from_=0, to=360,command = self.updateCirclePlot)
+        # self.slider2.pack(side='right')
 
         #self.createImgPlot(self.slider.get())
 
+    def sliderCallback(self,val):
+        val = int(val)
+
+        self.stream.start()
+
+        if val > 0 and val < 90:
+            self.channel =  0  #right
+            #self.wt =  np.array(['0', '0','1','1'])  
+
+        if val > 90 and val < 180:
+            self.channel = 1 #right
+            #self.wt =  np.array(['0', '0','1','1'])
+
+        if val > 180 and val < 270:
+            self.channel =  2  #left
+            #self.wt =  np.array(['1', '1','0','0']) 
+
+        if val > 270 and val < 360:
+            self.channel = 3  #left 
+            #self.wt =  np.array(['1', '1','0','0'])  
+
+
+        self.updateCirclePlot(val)
+
+ 
+        #self.displayPlots()
+        ##self.playContinuousSound()
     
     def createPlots(self):
-
+        # create frame
         plotFrame = tk.Frame(master=self.plot_frame) #,padx=10, pady=10)
         plotFrame.pack(side='right') #grid(row=0,column=3)
     
-        # Create the plots for waveform and spectragram
+        # Create the plots for waveform and spectrogram
         self.fig, (self.ax1, self.ax2) = plt.subplots(figsize=(5, 3), nrows=2)  # Adjust plot size here
         self.canvas = FigureCanvasTkAgg(self.fig, master=plotFrame)  # Place in the plot frame
         plt.subplots_adjust(hspace=0.5)
         self.fig.patch.set_alpha(0) 
-        #ax1.patch.set_facecolor('none') 
+        
+        
+        
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True) #fill="both", expand=True, padx=5, pady=5)
         self.canvas.get_tk_widget().configure(bg= '#F0F0F0')
         self.canvas.draw()
 
-    def createImgPlot(self):
 
+    def createImgPlot(self):
+        # create frame
         imgFrame = tk.Frame(master=self.plot_frame) #,padx=10, pady=10)
         imgFrame.pack(side="left")#grid(row=0, column=2)
         #create plot with slider value updates 
@@ -227,42 +271,40 @@ class PlayAudio(): #defines new class name PlayAudio
         self.ax3.set_xticks([])
         self.ax3.set_yticks([])
 
-        self.determineSpeaker(val)
+        self.updateSpeaker(val)
 
-    def determineSpeaker(self,val):
+
+    def updateSpeaker(self,val):
         #val = float(val)
-        print('deg:', val)
+        #print('deg:', val)
 
-        speakerTheta= 45 #[45, 135, 270, 315]
-        soundTheta= val
+        # speakerTheta= 45 #[45, 135, 270, 315]
+        # soundTheta= val
 
-        th = (1+ np.cos(math.radians(speakerTheta)-math.radians(soundTheta)))/2
+        # th = (1+ np.cos(math.radians(speakerTheta)-math.radians(soundTheta)))/2
+        # print(math.degrees(th))
 
-        print(math.degrees(th))
+        val = int(val)
 
         # play sound out of specifc speakers based on user input
         if val > 0 and val < 180:
-            self.wt = np.array(['0', '0','1','1'])  #right side only 
+            self.wt =  np.array(['0', '0','1','1'])  #right side only 
+            
 
         if val > 180 and val < 360:
             self.wt = np.array(['1', '1','0','0'])  #left side only 
 
         # might not be necessary
         if val == 0 or val ==360: #front
-            self.wt = np.array(['1', '0','1','0'])  #LF, RF
+            self.wt = np.array(['1', '0','1','0'])  
         
         if val == 180: #back
-            self.wt = np.array(['0', '1','0','1']) #LB, RB
-        print(self.wt)
+            self.wt = np.array(['0', '1','0','1'])
 
-        print('wt slider:', self.wt)
+        #print('wt slider:', self.wt)
         self.createEntries()
         #self.displayPlots()
 
-    # 1,1,0,0 LEFT
-    # 0,0,1,1 RIGHT
-    # 1,0,1,0 both
-    # 0,1,0,1 both
 
     def readWavFile(self):
 
@@ -271,92 +313,152 @@ class PlayAudio(): #defines new class name PlayAudio
         self.time = np.linspace(0., self.length, self.data.shape[0])
         self.data2=self.data
         self.xttArb = np.zeros((self.totalSpeakers,len(self.time)))
-        print('samplerate:', self.samplerate)
+        #print('samplerate:', self.samplerate)
 
-        self.displayPlots()
+        #self.displayPlots()
+        #self.playContinuousSound()
 
 
-    # plot 
-    def displayPlots(self):
+    # # plot 
+    # def displayPlots(self):
 
-        #self.getEntryVals()
+    #     #self.getEntryVals()
+
+    #     s = self.getSignalType
+    #     s = ' '.join(s) # convert list to string
+    #     #print(s); print(type(s))
+    #     # wtt =self.getInputWts #weights
+    #     # print(str('weight:'), str(wtt))
+
+    #     wtt=self.wt
+    #     print('wtt:', wtt)
+
+    #     if s == 'arbitrary sound':
+    #         #playsound('car-horn.wav')
+    #         # xttArb = np.zeros((self.totalSpeakers,len(time)))
+
+    #         for idxWt, valWt in enumerate(wtt):
+    #             # print('in for loop')
+    #             # print(int(valWt))
+    #             # print(type(valWt))
+
+    #             self.data2 = int(valWt)*self.data
+
+    #             self.xttArb[idxWt,:] = np.array(self.data2)
+
+    #             self.ax1.plot(self.time,self.data) #plot waveform
+    #             self.ax2.specgram(self.data, NFFT=self.NFFT, Fs=self.samplerate) #plot spectrogram
+
+    #             self.canvas.draw()
+    #             self.ax1.clear()
+    #             self.ax2.clear()
+
+    #         sd.play(np.transpose(self.xttArb), mapping=[1,2,3,4])   
+    #         sd.wait()
+
+    #     else:
+    #         newFreq = self.freq[self.freqIdxList]  #print(str('frequency:'), str(newFreq)); print(newFreq)
+    #         # wtt =self.getInputWts #weights
+    #         # print(str('weight:'), str(wtt))
+
+    #         #xtt = np.zeros((4,len(self.t)))
+    #         checkFreq = []
+    #         # this section plays sounds out of speakers
+    #         # weight values will reflect which speaker to play sound from 
+    #         for valF in newFreq:
+    #             for idxWt, valWt in enumerate(wtt):
+    #                 #print('valWt:', valWt)
+
+    #                 if s == 'tone':
+    #                     saveXt = np.sin(2*np.pi*valF*self.t)
+    #                     self.xt = int(valWt)*np.sin(2*np.pi*valF*self.t) #/10 
+    #                     print(np.shape(self.xt))
+
+    #                 if s == 'white noise':
+    #                     #noise
+    #                     xt = np.random.normal(0,1,len(self.t))/40
+    #                     b, a = butter(2, valF/22050, btype='high', analog=False)
+    #                     saveXt = filtfilt(b, a, xt)
+    #                     self.xt = int(valWt)*filtfilt(b, a, xt)
+
+    #                 self.xtt[idxWt,:]= np.array(self.xt) 
+
+    #                 # plot figure only once
+    #                 if valF not in checkFreq:
+    #                     checkFreq.append(valF)
+
+    #                     self.ax1.plot(self.t, saveXt)
+    #                     self.ax2.specgram(saveXt, NFFT=self.NFFT, Fs=self.fs)
+     
+    #                     self.canvas.draw()
+    #                     self.canvas.get_tk_widget().pack() 
+    #                     self.canvas.flush_events()
+    #                     self.ax1.clear() # clear waveform
+    #                     self.ax2.clear() # clear spectrogram
+
+    #             sd.play(np.transpose(self.xtt), mapping=[1,2,3,4]) #, blocking=True)   
+    #             sd.wait() # wait for sound to play
+    
+
+    def callbackParams(self):
+        pass
+
+    def audioCallback(self,outdata,frames, time, status):
+
+        """
+        outdata:  write audio data 
+        |          Whatever you put into outdata[:], gets sent to the soundcard in real time.
+
+        frames: how many audio frames to generate
+        |          Used to generate frames worth of samples (usually per channel).
+
+        time: timestamps for sync (optional)
+        status: flags for underruns, errors, etc
+
+        """
+
+        t = (np.arange(frames) + self.phase) / self.fs
+        self.phase = (self.phase + frames) % self.fs
+
+        # print("outdata:", np.shape(outdata))
+        # print("frames:", np.shape(frames))
+        # print("time:", time)
+        # print("status:", status)
 
         s = self.getSignalType
         s = ' '.join(s) # convert list to string
-        #print(s); print(type(s))
-        # wtt =self.getInputWts #weights
-        # print(str('weight:'), str(wtt))
 
-        wtt=self.wt
-        print('wtt:', wtt)
+        newFreq = self.freq[self.freqIdxList]  #print(str('frequency:'), str(newFreq)); print(newFreq)
 
-        if s == 'arbitrary sound':
-            # samplerate, data = wavfile.read('car-horn.wav')  #print(samplerate); print(data); print(np.shape(data)); 
-            # length = data.shape[0] / samplerate #print(f"length = {length}s")
-            # time = np.linspace(0., length, data.shape[0])
+        # this section plays sound based on frequency and speaker (channel)
+        for valF in newFreq:
 
-            #playsound('car-horn.wav')
-            # xttArb = np.zeros((self.totalSpeakers,len(time)))
+            if s == 'tone':
+                self.xt = np.sin(2*np.pi*valF*t) #/10  #int(valWt)*
 
-            for idxWt, valWt in enumerate(wtt):
-                print('in for loop')
-                print(int(valWt))
-                print(type(valWt))
+            if s == 'white noise':
+                #noise
+                xt = np.random.normal(0,1,len(t))/40
+                b, a = butter(2, valF/22050, btype='high', analog=False)
+                saveXt = filtfilt(b, a, xt)
+                self.xt = filtfilt(b, a, xt) # int(valWt)*
 
-                self.data2 = int(valWt)*self.data
+            output = np.zeros((frames,4), dtype = np.float32)
+            output[:,self.channel]=self.xt  
+            outdata[:] = output
+            #[:] after a variable name denotes slicing a list or string. 
+            # It's a way to extract a portion of the original sequence and create a new one.
 
-                self.xttArb[idxWt,:] = np.array(self.data2)
 
-                self.ax1.plot(self.time,self.data) #plot waveform
-                self.ax2.specgram(self.data, NFFT=self.NFFT, Fs=self.samplerate) #plot spectrogram
 
-                self.canvas.draw()
-                self.ax1.clear()
-                self.ax2.clear()
 
-            sd.play(np.transpose(self.xttArb), mapping=[1,2,3,4])   
-            sd.wait()
+    # def close(self):
+    #     # if self.playing:
+    #     self.stream.stop()
+    #     self.stream.close()
+    #     self.root.destroy()
 
-        else:
-            newFreq = self.freq[self.freqIdxList]  #print(str('frequency:'), str(newFreq)); print(newFreq)
-            # wtt =self.getInputWts #weights
-            # print(str('weight:'), str(wtt))
-
-            #xtt = np.zeros((4,len(self.t)))
-            checkFreq = []
-            # this section plays sounds out of speakers
-            # weight values will reflect which speaker to play sound from 
-            for valF in newFreq:
-                for idxWt, valWt in enumerate(wtt):
-                    #print('valWt:', valWt)
-                    if s == 'tone':
-                        self.xt = int(valWt)*np.sin(2*np.pi*valF*self.t) #/10 
-                        print(np.shape(self.xt))
-
-                    if s == 'white noise':
-                        #noise
-                        xt = np.random.normal(0,1,len(self.t))/40
-                        b, a = butter(2, valF/22050, btype='high', analog=False)
-                        self.xt = int(valWt)*filtfilt(b, a, xt)
-
-                    self.xtt[idxWt,:]= np.array(self.xt) 
-
-                    # plot figure only once
-                    if valF not in checkFreq:
-                        checkFreq.append(valF)
-
-                        self.ax1.plot(self.t, self.xt)
-                        self.ax2.specgram(self.xt, NFFT=self.NFFT, Fs=self.fs)
-     
-                        self.canvas.draw()
-                        self.canvas.get_tk_widget().pack() 
-                        self.canvas.flush_events()
-                        self.ax1.clear() # clear waveform
-                        self.ax2.clear() # clear spectrogram
-
-                sd.play(np.transpose(self.xtt), mapping=[1,2,3,4])   
-                sd.wait() # wait for sound to play
-
+    
 
 
 if __name__ =="__main__":
@@ -380,4 +482,105 @@ if __name__ =="__main__":
     gui = PlayAudio(root)  #object of a class
 
     root.mainloop()
+
+
+
+    ######################################################################
+    # threading 
+    ######################################################################
+
+    # def playContinuousSound(self):
+
+    #     def play_cont_sound():
+
+    #         s = self.getSignalType
+    #         s = ' '.join(s) # convert list to string
+    #         #print(s); print(type(s))
+    #         # wtt =self.getInputWts #weights
+    #         # print(str('weight:'), str(wtt))
+
+    #         wtt=self.wt
+    #        # print('wtt:', wtt)
+
+    #         if s == 'arbitrary sound':
+    #             #playsound('car-horn.wav')
+    #             # xttArb = np.zeros((self.totalSpeakers,len(time)))
+
+    #             while self.running:
+
+    #                 for idxWt, valWt in enumerate(wtt):
+    #                     # print('in for loop')
+    #                     # print(int(valWt))
+    #                     # print(type(valWt))
+
+    #                     self.data2 = int(valWt)*self.data
+
+    #                     self.xttArb[idxWt,:] = np.array(self.data2)
+
+    #                     # self.ax1.plot(self.time,self.data) #plot waveform
+    #                     # self.ax2.specgram(self.data, NFFT=self.NFFT, Fs=self.samplerate) #plot spectrogram
+
+    #                     # self.canvas.draw()
+    #                     # self.ax1.clear()
+    #                     # self.ax2.clear()
+
+
+    #                 sd.play(np.transpose(self.xttArb), mapping=[1,2,3,4])#, blocking=True)   
+    #                 sd.wait()
+
+    #     threading.Thread(target=play_cont_sound, daemon=False).start() #daemon=True
+
+    # def playContinuousSound(self):
+
+    #     def play_cont_sound():
+
+            
+    #         s = self.getSignalType
+    #         s = ' '.join(s) # convert list to string
+
+    #         newFreq = self.freq[self.freqIdxList]  #print(str('frequency:'), str(newFreq)); print(newFreq)
+    #         # wtt =self.getInputWts #weights
+    #         # print(str('weight:'), str(wtt))
+
+    #         wtt=self.wt
+
+    #         #xtt = np.zeros((4,len(self.t)))
+    #         checkFreq = []
+    #         # this section plays sounds out of speakers
+    #         # weight values will reflect which speaker to play sound from 
+    #         for valF in newFreq:
+    #             for idxWt, valWt in enumerate(wtt):
+    #                 #print('valWt:', valWt)
+
+    #                 if s == 'tone':
+    #                     saveXt = np.sin(2*np.pi*valF*self.t)
+    #                     self.xt = int(valWt)*np.sin(2*np.pi*valF*self.t) #/10 
+    #                     #print(np.shape(self.xt))
+
+    #                 if s == 'white noise':
+    #                     #noise
+    #                     xt = np.random.normal0(0,1,len(self.t))/40
+    #                     b, a = butter(2, valF/22050, btype='high', analog=False)
+    #                     saveXt = filtfilt(b, a, xt)
+    #                     self.xt = int(valWt)*filtfilt(b, a, xt)
+
+    #                 self.xtt[idxWt,:]= np.array(self.xt) 
+
+    #                 # # plot figure only once
+    #                 # if valF not in checkFreq:
+    #                 #     checkFreq.append(valF)
+
+    #                 #     self.ax1.plot(self.t, saveXt)
+    #                 #     self.ax2.specgram(saveXt, NFFT=self.NFFT, Fs=self.fs)
+     
+    #                 #     self.canvas.draw()
+    #                 #     self.canvas.get_tk_widget().pack() 
+    #                 #     self.canvas.flush_events()
+    #                 #     self.ax1.clear() # clear waveform
+    #                 #     self.ax2.clear() # clear spectrogram
+
+    #             sd.play(np.transpose(self.xtt), mapping=[1,2,3,4], blocking=True)   # maybe this only plays sounds once instead of continuously?
+    #             #sd.wait() # wait for sound to play
+
+    #     threading.Thread(target=play_cont_sound, daemon=True).start() #daemon=True
     
