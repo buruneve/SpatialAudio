@@ -42,7 +42,7 @@ class PlayAudio(): #defines new class name PlayAudio
         # self.samplerate, self.data = wavfile.read('car-horn.wav')
 
         
-        self.xt = np.shape(self.t)
+        self.xt = np.shape(self.t) 
         self.xtt = np.zeros((self.totalSpeakers,len(self.t)))
 
         # label frame for drop-down menu, entries and buttons
@@ -66,6 +66,7 @@ class PlayAudio(): #defines new class name PlayAudio
         self.selectIdx = []       # store selected button index 
         self.storeInputWt = []    # store entry object as list     
         #self.getInputWts = []    # store new weight/amplitude (user input)
+        self.viewWeights =[]
     
 
         self.createDropDownMenu()
@@ -76,7 +77,11 @@ class PlayAudio(): #defines new class name PlayAudio
         self.createPlots()
         self.readWavFile()
 
-        self.phase = 0
+        self.phase = 0  #ongoing position in sine wave cycle
+        # ensure smooth and continuous waveform generation between audio blocks
+        # It's used to keep the waveform continuous when generating it in chunks (audio buffers or "frames").
+        # If you generate a sine wave from scratch each time inside the callback, you'd get clicks or glitches, 
+        # because the wave might not line up smoothly at the buffer boundaries.
         self.channel = ''  # which speaker 
         
         # Start audio stream: 4 output channels
@@ -85,6 +90,9 @@ class PlayAudio(): #defines new class name PlayAudio
 
         # Close stream on exit
         #self.root.protocol("WM_DELETE_WINDOW", self.close)
+
+        self.frames = 1136
+        self.output = np.zeros((self.frames,4), dtype = np.float32)
 
     def createDropDownMenu(self):
         # create drop-down menu
@@ -139,7 +147,7 @@ class PlayAudio(): #defines new class name PlayAudio
         else:
             self.freqBtn_list[idx].config(relief = 'raised')  #deselect btn
             self.selectIdx.remove(idx)  #pop did not work here 
-            print(str('updated idx list:'),self.selectIdx)
+            #print(str('updated idx list:'),self.selectIdx)
 
     def createEntries(self):
         # create frame to group/organize widgets
@@ -151,7 +159,7 @@ class PlayAudio(): #defines new class name PlayAudio
         lbl.grid(row=2, column=0, sticky='w', pady=5, padx=5)
 
         # create user input entry fields/widgets
-        for idx, weight in enumerate(self.wt):
+        for idx, weight in enumerate(self.viewWeights): #self.wt
             # create entry field
             e = tk.Entry(frameWtEntries, width =10) # , font=('ariel 15'))
 
@@ -183,6 +191,9 @@ class PlayAudio(): #defines new class name PlayAudio
             self.channel =  0  #right
             #self.wt =  np.array(['0', '0','1','1'])  
 
+        # if val == 90:
+        #     self.channel = np.array([0,1])
+
         if val > 90 and val < 180:
             self.channel = 1 #right
             #self.wt =  np.array(['0', '0','1','1'])
@@ -191,16 +202,56 @@ class PlayAudio(): #defines new class name PlayAudio
             self.channel =  2  #left
             #self.wt =  np.array(['1', '1','0','0']) 
 
+        # if val == 270:
+        #     self.channel = np.array([2,3])
+
         if val > 270 and val < 360:
             self.channel = 3  #left 
             #self.wt =  np.array(['1', '1','0','0'])  
 
+        if val == 0:
+            self.stream.stop()
+
 
         self.updateCirclePlot(val)
+        self.determineWeights(val)
 
  
         #self.displayPlots()
         ##self.playContinuousSound()
+
+    def determineWeights(self,val):
+        
+        soundTheta = int(val)
+                                # [LF,LB, RF, RB]
+        spkrThetaArr = np.array([315, 225, 45, 135]) #[45, 135, 225, 315])
+        print('soundTheta:', soundTheta)
+
+        self.viewWeights.clear()
+
+        for idx, spkrTheta in enumerate(spkrThetaArr):
+            print('spkrTheta:', spkrTheta)
+            # wt = np.float16((1+math.cos(spkrTheta-soundTheta))/2)
+            # print('wt:', wt)
+            #print(type(wt))
+            
+            if soundTheta == 0 or soundTheta == 360:
+                 self.viewWeights = [1,0,1,0]
+            # elif soundTheta == 90:
+            #     self.viewWeights = [0,0,1,1]
+            # elif soundTheta == 180:
+            #     self.viewWeights = [0,1,0,1]
+            # elif soundTheta == 270:
+            #     self.viewWeights = [1,1,0,0]
+            
+            else:
+                wt = np.float16((1+math.cos(math.radians(spkrTheta-soundTheta)))/2)
+                print('wt:', wt)
+                self.viewWeights.append(wt)
+
+        print('view weights:',self.viewWeights)
+        self.createEntries()
+  
     
     def createPlots(self):
         # create frame
@@ -212,8 +263,6 @@ class PlayAudio(): #defines new class name PlayAudio
         self.canvas = FigureCanvasTkAgg(self.fig, master=plotFrame)  # Place in the plot frame
         plt.subplots_adjust(hspace=0.5)
         self.fig.patch.set_alpha(0) 
-        
-        
         
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True) #fill="both", expand=True, padx=5, pady=5)
         self.canvas.get_tk_widget().configure(bg= '#F0F0F0')
@@ -271,39 +320,39 @@ class PlayAudio(): #defines new class name PlayAudio
         self.ax3.set_xticks([])
         self.ax3.set_yticks([])
 
-        self.updateSpeaker(val)
+        #self.updateSpeaker(val)
+        self.determineWeights(val)
 
 
-    def updateSpeaker(self,val):
-        #val = float(val)
-        #print('deg:', val)
+    # def updateSpeaker(self,val):
+    #     #val = float(val)
+    #     #print('deg:', val)
 
-        # speakerTheta= 45 #[45, 135, 270, 315]
-        # soundTheta= val
+    #     # speakerTheta= 45 #[45, 135, 270, 315]
+    #     # soundTheta= val
 
-        # th = (1+ np.cos(math.radians(speakerTheta)-math.radians(soundTheta)))/2
-        # print(math.degrees(th))
+    #     # th = (1+ np.cos(math.radians(speakerTheta)-math.radians(soundTheta)))/2
+    #     # print(math.degrees(th))
 
-        val = int(val)
+    #     val = int(val)
 
-        # play sound out of specifc speakers based on user input
-        if val > 0 and val < 180:
-            self.wt =  np.array(['0', '0','1','1'])  #right side only 
+    #     # play sound out of specifc speakers based on user input
+    #     if val > 0 and val < 180:
+    #         self.wt =  np.array(['0', '0','1','1'])  #right side only 
             
+    #     if val > 180 and val < 360:
+    #         self.wt = np.array(['1', '1','0','0'])  #left side only 
 
-        if val > 180 and val < 360:
-            self.wt = np.array(['1', '1','0','0'])  #left side only 
-
-        # might not be necessary
-        if val == 0 or val ==360: #front
-            self.wt = np.array(['1', '0','1','0'])  
+    #     # might not be necessary
+    #     if val == 0 or val ==360: #front
+    #         self.wt = np.array(['1', '0','1','0'])  
         
-        if val == 180: #back
-            self.wt = np.array(['0', '1','0','1'])
+    #     if val == 180: #back
+    #         self.wt = np.array(['0', '1','0','1'])
 
-        #print('wt slider:', self.wt)
-        self.createEntries()
-        #self.displayPlots()
+    #     #print('wt slider:', self.wt)
+    #     self.createEntries()
+    #     #self.displayPlots()
 
 
     def readWavFile(self):
@@ -400,8 +449,28 @@ class PlayAudio(): #defines new class name PlayAudio
     #             sd.wait() # wait for sound to play
     
 
-    def callbackParams(self):
-        pass
+    # def determineWeights(self,val):
+        
+    #     soundTheta = int(val)
+    #     spkrThetaArr = np.array([315, 225, 135, 45]) #[45, 135, 225, 315])
+    #     print('soundTheta:', soundTheta)
+
+    #     self.viewWeights.clear()
+
+    #     for idx, spkrTheta in enumerate(spkrThetaArr):
+    #         print('spkrTheta:', spkrTheta)
+    #         wt = np.float16((1+math.cos(spkrTheta-soundTheta))/2)
+    #         print('wt:', wt)
+    #         print(type(wt))
+
+    #         self.viewWeights.append(wt)
+
+    #     print('view weights:',self.viewWeights)
+    #     self.createEntries()
+  
+
+
+
 
     def audioCallback(self,outdata,frames, time, status):
 
@@ -417,13 +486,11 @@ class PlayAudio(): #defines new class name PlayAudio
 
         """
 
-        t = (np.arange(frames) + self.phase) / self.fs
-        self.phase = (self.phase + frames) % self.fs
+        self.frames = frames
+        t = (np.arange(self.frames) + self.phase) / self.fs
+        self.phase = (self.phase + self.frames) % self.fs
 
-        # print("outdata:", np.shape(outdata))
-        # print("frames:", np.shape(frames))
-        # print("time:", time)
-        # print("status:", status)
+        # print("outdata:", np.shape(outdata));print("frames:", np.shape(frames));print("time:", time);print("status:", status)
 
         s = self.getSignalType
         s = ' '.join(s) # convert list to string
@@ -432,25 +499,32 @@ class PlayAudio(): #defines new class name PlayAudio
 
         # this section plays sound based on frequency and speaker (channel)
         for valF in newFreq:
+            for idxWt,valWt in enumerate(self.viewWeights):
 
-            if s == 'tone':
-                self.xt = np.sin(2*np.pi*valF*t) #/10  #int(valWt)*
+                if s == 'tone':
+                    self.xt = valWt * np.sin(2*np.pi*valF*t) #/10  #int(valWt)*
 
-            if s == 'white noise':
-                #noise
-                xt = np.random.normal(0,1,len(t))/40
-                b, a = butter(2, valF/22050, btype='high', analog=False)
-                saveXt = filtfilt(b, a, xt)
-                self.xt = filtfilt(b, a, xt) # int(valWt)*
+                if s == 'white noise':
+                    #noise
+                    xt = np.random.normal(0,1,len(t))/40
+                    b, a = butter(2, valF/22050, btype='high', analog=False)
+                    saveXt = filtfilt(b, a, xt)
+                    self.xt = valWt*filtfilt(b, a, xt) # int(valWt)*
 
-            output = np.zeros((frames,4), dtype = np.float32)
-            output[:,self.channel]=self.xt  
-            outdata[:] = output
-            #[:] after a variable name denotes slicing a list or string. 
-            # It's a way to extract a portion of the original sequence and create a new one.
-
+                # output = np.zeros((frames,4), dtype = np.float32)
+                self.output[:,idxWt]=self.xt #self.channel
+                outdata[:] = self.output         # [:] after a variable name denotes slicing a list or string. 
+                                                 # It's a way to extract a portion of the original sequence and create a new one.
 
 
+
+
+    # if np.all(self.channel): 
+    #     output[:,0:1]=self.xt  
+    # elif  np.all(self.channel): # == np.array([2, 3]): 
+    #     output[:,1:2]=self.xt
+    # else:
+    
 
     # def close(self):
     #     # if self.playing:
@@ -458,7 +532,6 @@ class PlayAudio(): #defines new class name PlayAudio
     #     self.stream.close()
     #     self.root.destroy()
 
-    
 
 
 if __name__ =="__main__":
@@ -482,6 +555,7 @@ if __name__ =="__main__":
     gui = PlayAudio(root)  #object of a class
 
     root.mainloop()
+
 
 
 
