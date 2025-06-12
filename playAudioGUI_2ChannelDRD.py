@@ -29,7 +29,7 @@ getDeviceInfo = sd.query_devices()
 print(getDeviceInfo)
 
 # set output device 
-sd.check_output_settings(device=4)
+sd.check_output_settings(device=7)
 
 class PlayAudio(): #defines new class name PlayAudio
     def __init__(self, root):   # sets up an instance of a class
@@ -90,15 +90,15 @@ class PlayAudio(): #defines new class name PlayAudio
         # If you generate a sine wave from scratch each time inside the callback, you'd get clicks or glitches, 
         # because the wave might not line up smoothly at the buffer boundaries.
         self.channel = ''  # which speaker 
-        
+        self.frames =  44100
+
         # Start audio stream: 4 output channels
-        self.stream = sd.OutputStream(callback=self.audioCallback, channels=self.totalSpeakers, samplerate=self.fs)
+        self.stream = sd.OutputStream(callback=self.audioCallback, channels=self.totalSpeakers, samplerate=self.fs, blocksize=self.frames)
         #self.stream.start()     
 
         # Close stream on exit
         #self.root.protocol("WM_DELETE_WINDOW", self.close)
 
-        self.frames = 1136
         self.output = np.zeros((self.frames,self.totalSpeakers), dtype = np.float32)
 
 
@@ -196,7 +196,7 @@ class PlayAudio(): #defines new class name PlayAudio
         # while self.phase % self.frames == 0:
         #     print("phase:",self.phase)
         #     self.stream.start()
-        
+
         self.stream.start()
 
         if val > 0 and val < 90:
@@ -214,7 +214,6 @@ class PlayAudio(): #defines new class name PlayAudio
 
         if val == 0:
             self.stream.stop()
-
 
         self.updateCirclePlot(val)
         self.determineWeights(val)
@@ -371,6 +370,8 @@ class PlayAudio(): #defines new class name PlayAudio
             self.time = np.linspace(0., self.length, self.data.shape[0])
             self.data2=self.data
             self.xttArb = np.zeros((self.totalSpeakers,len(self.time)))
+            self.frames = len(self.time)
+
             #playsound('car-horn.wav')
             # xttArb = np.zeros((self.totalSpeakers,len(time)))
 
@@ -388,6 +389,10 @@ class PlayAudio(): #defines new class name PlayAudio
 
                     if s == 'tone':
                         self.xt = valWt * np.sin(2*np.pi*valF*t) #/10  #int(valWt)*
+                        #self.frames = len(self.xt)
+                        print('blocksize = ' , self.stream.blocksize)
+                        print('samplerate = ' , self.stream.samplerate)
+                        print('samplerate = ' , len(self.xt))
 
                     if s == 'white noise':
                         #noise
