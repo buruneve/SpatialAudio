@@ -11,7 +11,6 @@ import sounddevice as sd
 from scipy.io import wavfile
 from playsound import playsound
 
-import time
 from scipy.signal import butter, filtfilt
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
@@ -23,6 +22,17 @@ import math
 import threading
 import soundfile as sf
 import sys
+
+import serial   # pip install pyserial 
+import time
+
+#self.arduino = serial.Serial(port='COM3', baudrate=9600, timeout=.1) #115200
+
+# import board
+# import busio
+# import adafruit_drv2605
+# i2c = busio.I2C(board.SCL, board.SDA)
+# drv = adafruit_drv2605.DRV2605(i2c)
 
 
 # # view device info
@@ -61,7 +71,7 @@ class PlayAudio(): #defines new class name PlayAudio
         # self.startButton.pack(side="top", padx=10)  #grid(row = 2, column=3, sticky= 'E') #, sticky=tk.W)
 
         self.quitButton =  tk.Button(self.plot_frame, text = 'QUIT', bg ='red', fg= 'black',
-                                     width=8, height=1, padx=5, pady=5, command= root.destroy) 
+                                     width=8, height=1, padx=5, pady=5, command= root.quit) #root.destroy
         self.quitButton.pack(side="top") 
 
         # store in lists or as a string
@@ -73,8 +83,9 @@ class PlayAudio(): #defines new class name PlayAudio
 
         self.createDropDownMenu()
         self.createButtons()
-        self.createEntries()
+        self.createWtEntries()
         self.createSliders()
+        self.createDegEntry()
         self.createImgPlot()
         self.createPlots()
         self.readWavFile()
@@ -86,6 +97,15 @@ class PlayAudio(): #defines new class name PlayAudio
 
         # audio stream
         self.stream = sd.OutputStream(callback=self.audioCallback, channels=self.totalSpeakers, samplerate=self.fs, blocksize=self.frames)
+
+        try:
+            # initialize and open serial port (if port is given)
+            self.serialPort = serial.Serial(port='COM3', baudrate=9600, timeout=.1) #115200
+            #time.sleep(2)  # Wait for Arduino to reset
+        
+        except serial.SerialException:
+            print("could not open serial port")
+
 
 
     def createDropDownMenu(self):
@@ -139,7 +159,7 @@ class PlayAudio(): #defines new class name PlayAudio
             self.freqBtn_list[idx].config(relief = 'raised')  #deselect btn
             self.valF = 0
 
-    def createEntries(self):
+    def createWtEntries(self):
         # create frame to group/organize widgets
         frameWtEntries = tk.Frame(master=self.input_frame,pady=5) #,padx=10, pady=10)
         frameWtEntries.grid(row = 2, column=0, sticky='W')
@@ -156,14 +176,29 @@ class PlayAudio(): #defines new class name PlayAudio
             e.insert(0,weight) # default values 
             e.grid(row=2, column= idx+1,sticky = 'w', padx=5, pady=5 )  #+1 for indexing 
             self.storeInputWt.append(e) #append user's input to list
+
+    def createDegEntry(self):
+        pass
+        frame = tk.Frame(self.plot_frame)
+        frame.pack(side="top")
+        #frame.pack(side="left") #, padx=0 )
+
+        lbl = tk.Label(self.plot_frame, text="Degrees:", pady=5)
+        lbl.pack(side="top") #, fill=tk.X)
+        # #lbl.grid(row=0, column=0, sticky='w', pady=5, padx=5)
+        # #lbl.pack( side = tk.LEFT)
+
+        e = tk.Entry(self.plot_frame, width=10) #, bd =5)
+        # #e.grid(row=0, column=1, sticky='w', pady=5, padx=5)
+        e.pack(side = "top") #, fill = tk.X)
     
     def createSliders(self):
         # create slider frame
         sliderFrame = tk.Frame(self.plot_frame)
-        sliderFrame.pack(side="left", padx=10 )
+        sliderFrame.pack(side="left", padx=10, pady=10 )
 
         #slider
-        self.slider = tk.Scale(sliderFrame, from_=0, to=720,length=600,command=self.sliderCallback) 
+        self.slider = tk.Scale(sliderFrame, from_=0, to=720,length=300,command=self.sliderCallback) #self.ardComm
         self.slider.pack(side='left')
 
 
@@ -176,6 +211,48 @@ class PlayAudio(): #defines new class name PlayAudio
 
         self.updateCirclePlot(val)
         self.determineWeights(val)
+        #self.threading(val)
+        
+        threading.Thread(target=self.serialPortComm, args=(val,)).start()  #daemon=True
+
+    # def threading(self,val):
+    #     threading.Thread(target=self.ardComm, args=(val,), daemon=True).start()
+
+    
+    def serialPortComm(self, val):
+        deg = int(val)
+
+        #if (deg >=135 and deg <=255) or  (deg >=495 and deg <=585) : # plays only while slider is activetly being moved
+        ## adding break statements achieves the same thing 
+
+        while True : # continuously plays even when slider is not moving -- also does not stop 
+                     # break statements play only when slider is activately being moved
+
+            if self.serialPort and self.serialPort.is_open: # if serial port is open
+                try:
+                    if (deg >=135 and deg <= 180)  or (deg >=495 and deg <=540):
+                        writeByte = self.serialPort.write(b'B')  # transmit 'A' (8bit) b'A'
+                        #print(writeByte)
+                        #time.sleep(1)
+                        #break
+
+                    if (deg >=180 and deg <= 225) or (deg >= 540 and deg <= 585):
+                        writeByte = self.serialPort.write(b'A')
+                        #time.sleep(1)
+                        #break
+                    
+                    else:
+                        break
+                    #writeByte = self.serialPort.write(b'C')
+                    #     #str = self.serialPort.readline().decode().strip()
+                    #     #print(str)
+                    #     #time.sleep(1)
+                    #     break
+                except Exception as error:   # if theres an error 
+                    print("did not write to serial device:", error)
+
+            time.sleep(1)
+
 
 
     def determineXt(self):
@@ -231,7 +308,7 @@ class PlayAudio(): #defines new class name PlayAudio
             self.viewWeights.append(wt)
 
         #print('view weights:',self.viewWeights)
-        self.createEntries()
+        self.createWtEntries()
   
     
     def createPlots(self):
@@ -310,6 +387,7 @@ class PlayAudio(): #defines new class name PlayAudio
         #self.samplerate, self.wavdata = wavfile.read('car-horn.wav')  #print(samplerate); print(data); print(np.shape(data)); 
         self.samplerate, self.wavdata = wavfile.read('tonecomb.wav')  #print(samplerate); print(data); print(np.shape(data)); 
         print(np.size(self.wavdata.shape))
+        print('arb samplerate:', self.samplerate)
 
         #self.audioCallback
 
@@ -337,8 +415,6 @@ class PlayAudio(): #defines new class name PlayAudio
         outdata[:] = self.output         # [:] after a variable name denotes slicing a list or string. 
                                         # It's a way to extract a portion of the original sequence and create a new one.
         #print(np.size(outdata))
-
-
 
 
 if __name__ =="__main__":
