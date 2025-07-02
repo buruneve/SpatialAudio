@@ -37,11 +37,11 @@ import adafruit_tca9548a
 
 
 # # view device info
-# getDeviceInfo = sd.query_devices()
-# print(getDeviceInfo)
+#getDeviceInfo = sd.query_devices()
+#print(getDeviceInfo)
 
 # set output device 
-sd.check_output_settings(device=0 ) #4
+sd.check_output_settings(device=1) #4
 
 class PlayAudio(): #defines new class name PlayAudio
     def __init__(self, root):   # sets up an instance of a class
@@ -116,8 +116,8 @@ class PlayAudio(): #defines new class name PlayAudio
         self.drv2 = adafruit_drv2605.DRV2605(tca[1])  # Channel 1
 
         # Set waveform for both motors
-        self.drv1.sequence[0] = adafruit_drv2605.Effect(1)  # Strong click
-        self.drv2.sequence[0] = adafruit_drv2605.Effect(47) # Tick
+        self.drv1.sequence[0] = adafruit_drv2605.Effect(20)  # Strong click
+        self.drv2.sequence[0] = adafruit_drv2605.Effect(20) # Tick
 
         # run serial communication on a separate thread
         # prevents gui from freezing
@@ -237,18 +237,22 @@ class PlayAudio(): #defines new class name PlayAudio
             # deg = self.sliderVal.get()
             #print(deg)
 
-            if deg in range(135, 181) or deg in range(495, 541): #135-180; 180;540
+            if deg in range(135, 180) or deg in range(495, 540): #135-179; 180;540
                 # self.serialPort.write('R'.encode())
                 #time.sleep(1)
                 self.drv1.play()
                 #print('right')
                 time.sleep(1)
 
-            elif deg in range(180, 226) or deg in range(540, 586): #180-225; 540-585
+            elif deg in range(181, 226) or deg in range(541, 586): #181-225; 540-585
                 # self.serialPort.write('L'.encode())
                 #time.sleep(1)
                 self.drv2.play()
                 #print('left')
+                time.sleep(1)
+            elif deg == 180 or deg == 540:
+                self.drv1.play()
+                self.drv2.play()
                 time.sleep(1)
             else:
                 #self.serialPort.write('C'.encode())
@@ -433,7 +437,7 @@ class PlayAudio(): #defines new class name PlayAudio
         self.determineXt()
 
         for idxWt,valWt in enumerate(self.viewWeights):
-            self.output[:,idxWt]=valWt*self.xt
+            self.output[:,idxWt]=(valWt*self.xt)/2
             #print(np.size(self.output))
 
         outdata[:] = self.output         # [:] after a variable name denotes slicing a list or string. 
