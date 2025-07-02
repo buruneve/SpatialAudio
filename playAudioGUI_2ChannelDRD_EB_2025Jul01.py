@@ -3,7 +3,7 @@
 # import libraries
 import tkinter as tk
 from tkinter import ttk 
-from PIL import ImageTk, Image
+from PIL import ImageTk, Image # install pillow
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.image as mpimg 
 
@@ -27,9 +27,11 @@ import serial   # pip install pyserial
 import time
 
 
-# import board
-# import busio
-# import adafruit_drv2605
+import board
+import busio
+import adafruit_drv2605
+import adafruit_tca9548a
+
 # i2c = busio.I2C(board.SCL, board.SDA)
 # drv = adafruit_drv2605.DRV2605(i2c)
 
@@ -39,7 +41,7 @@ import time
 # print(getDeviceInfo)
 
 # set output device 
-sd.check_output_settings(device=4 ) #10)
+sd.check_output_settings(device=0 ) #4
 
 class PlayAudio(): #defines new class name PlayAudio
     def __init__(self, root):   # sets up an instance of a class
@@ -104,11 +106,22 @@ class PlayAudio(): #defines new class name PlayAudio
         
         except serial.SerialException:
             print("could not open serial port")
+        
+        # Initialize I2C bus and multiplexer
+        i2c = busio.I2C(board.SCL, board.SDA)
+        tca = adafruit_tca9548a.TCA9548A(i2c)
+
+        # Initialize each DRV2605 through a different TCA channel
+        self.drv1 = adafruit_drv2605.DRV2605(tca[0])  # Channel 0
+        self.drv2 = adafruit_drv2605.DRV2605(tca[1])  # Channel 1
+
+        # Set waveform for both motors
+        self.drv1.sequence[0] = adafruit_drv2605.Effect(1)  # Strong click
+        self.drv2.sequence[0] = adafruit_drv2605.Effect(47) # Tick
 
         # run serial communication on a separate thread
         # prevents gui from freezing
-        threading.Thread(target=self.serialPortComm, daemon=True).start()  # daemon 
-
+        threading.Thread(target=self.piComm, daemon=True).start()  # daemon 
 
     def createDropDownMenu(self):
         # create drop-down menu
@@ -216,6 +229,32 @@ class PlayAudio(): #defines new class name PlayAudio
         self.updateCirclePlot(val)
         self.determineWeights(val)
 
+
+    def piComm(self):
+
+        while True:
+            deg = self.sliderVal.get()
+            # deg = self.sliderVal.get()
+            #print(deg)
+
+            if deg in range(135, 181) or deg in range(495, 541): #135-180; 180;540
+                # self.serialPort.write('R'.encode())
+                #time.sleep(1)
+                self.drv1.play()
+                #print('right')
+                time.sleep(1)
+
+            elif deg in range(180, 226) or deg in range(540, 586): #180-225; 540-585
+                # self.serialPort.write('L'.encode())
+                #time.sleep(1)
+                self.drv2.play()
+                #print('left')
+                time.sleep(1)
+            else:
+                #self.serialPort.write('C'.encode())
+                #print('silent')
+                time.sleep(1)
+                
     
     def serialPortComm(self):
         # send commands to Arduino
