@@ -234,28 +234,26 @@ class PlayAudio(): #defines new class name PlayAudio
 
         while True:
             deg = self.sliderVal.get()
-            # deg = self.sliderVal.get()
             #print(deg)
 
-            if deg in range(135, 180) or deg in range(495, 540): #135-179; 180;540
-                # self.serialPort.write('R'.encode())
-                #time.sleep(1)
+            #right motor
+            if deg in range(135, 180) or deg in range(495, 540): #135-179; 495-539 
                 self.drv1.play()
                 #print('right')
                 time.sleep(1)
-
-            elif deg in range(181, 226) or deg in range(541, 586): #181-225; 540-585
-                # self.serialPort.write('L'.encode())
-                #time.sleep(1)
+            
+            #left motor
+            elif deg in range(181, 226) or deg in range(541, 586): #181-225; 541-585
                 self.drv2.play()
                 #print('left')
                 time.sleep(1)
-            elif deg == 180 or deg == 540:
+
+            #both R&L motors
+            elif deg == 180 or deg == 540: 
                 self.drv1.play()
                 self.drv2.play()
                 time.sleep(1)
             else:
-                #self.serialPort.write('C'.encode())
                 #print('silent')
                 time.sleep(1)
                 
