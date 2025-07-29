@@ -13,7 +13,11 @@ from scipy.io import wavfile
 
 from scipy.signal import butter, filtfilt
 import matplotlib.pyplot as plt
+<<<<<<< HEAD
 #from matplotlib.figure import Figure
+=======
+from matplotlib.figure import Figure
+>>>>>>> fe36ef405984428213cd33b1eea1f4689f7ceae5
 #from pathlib import Path
 #import os
 import numpy as np
