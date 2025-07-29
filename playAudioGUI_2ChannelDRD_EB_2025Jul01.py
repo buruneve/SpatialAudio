@@ -3,25 +3,25 @@
 # import libraries
 import tkinter as tk
 from tkinter import ttk 
-from PIL import ImageTk, Image # install pillow
+#from PIL import ImageTk, Image # install pillow
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.image as mpimg 
 
 import sounddevice as sd
 from scipy.io import wavfile
-from playsound import playsound
+#from playsound import playsound
 
 from scipy.signal import butter, filtfilt
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
-from pathlib import Path
-import os
+#from pathlib import Path
+#import os
 import numpy as np
 import math
 
 import threading
-import soundfile as sf
-import sys
+#import soundfile as sf
+#import sys
 
 import serial   # pip install pyserial 
 import time
