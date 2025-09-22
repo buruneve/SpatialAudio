@@ -146,11 +146,20 @@ spec = np.zeros((60,16)) #x: time steps to keep visible; y: number of mel bands
 # Setup figure
 plt.ion() # inetractive mode so updates show live 
 fig, ax = plt.subplots()
-im = ax.imshow(spec, aspect='auto', origin='lower',cmap='magma',interpolation='nearest') #initialize and show image once
+im = ax.imshow(spec, aspect='auto', origin='lower',cmap='magma',interpolation='nearest', animated=True) #initialize and show image once
 ax.set_ylabel("Time"); ax.set_xlabel("Mel bands"); ax.set_title("Real-time Mel Spectrogram")
-plt.show(block=False)
+#plt.show(block=False)
 #plt.pause(0.05) #pause for updates
 im.set_clim(vmin=40, vmax=90)  # rescale colors
+
+# Tell matplotlib we will use blitting
+# blitting -- aka block image transfer; plots only part of an image that have changed instead of entire figure 
+background = fig.canvas.copy_from_bbox(ax.bbox) # saves a clean background
+
+# Draw initial state
+ax.draw_artist(im)
+fig.canvas.blit(ax.bbox)
+fig.canvas.flush_events()
 
 #def animate(i):
 # with open('px4_data.csv', 'w', newline='') as file:
@@ -272,29 +281,29 @@ while True: #time.time() < t_end: # while True:   #COMMAND_ACK  #UNKNOWN_292 typ
                 #writer.writerow({'azimuth deg': azimuth_deg,'q factor': q_factor,'time utc usec': time_utc_usec,'time boot ms': time_boot_ms, 'yaw': yaw, 'pitch': pitch,'roll': roll, 'active intensity': active_intensity, 'mel intensity': mel_intensity})
 
 #print("file closed")
-
-
-
 # writer = csv.writer(file)
 # writer.writerow(name)
 #writer.writerows(str(azimuth_deg))
 
-
         new_row = mel_intensity  # shape: (16,)
+
+        # Restore background
+        fig.canvas.restore_region(background)
         
         # Update spectrogram data 
         spec = np.roll(spec, -1, axis=0)   # rolls vertically 
         spec[-1, :] = new_row              # insert data in new row
         
         # Update plot
-        #im.set_data(spec)       #update existing image; replace old array without creating new imshow object
+        im.set_data(spec)       #update existing image; replace old array without creating new imshow object
         
-        plt.plot(new_row)
-        # im.set_clim(vmin=spec.min(), vmax=spec.max())  # rescale colors
-        #plt.draw() #redraw plot 
-        fig.canvas.flush_events() # flush events 
-        #plt.pause(0.00000000000000000000001) #pause for updates
-        plt.clf() # clear figure
+        # Redraw just the image
+        ax.draw_artist(im)
+        
+        # Blit the updated area
+        fig.canvas.blit(ax.bbox) 
+        fig.canvas.flush_events()
+
 
 
 
@@ -320,9 +329,9 @@ while True: #time.time() < t_end: # while True:   #COMMAND_ACK  #UNKNOWN_292 typ
         # #plt.clf() # clear figure 
 
         #plt.show()
-plt.ioff()
-plt.show()
-plt.colorbar()
+# plt.ioff()
+# plt.show()
+#plt.colorbar()
 
         #fig2 = plt.figure()
 # plt.imshow(melSpec)
