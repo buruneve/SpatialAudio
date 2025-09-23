@@ -30,7 +30,7 @@ from matplotlib import style
 
 
 # Start a listening connection
-the_connection = mavutil.mavlink_connection(device='COM5', baud=11500) #, dialect = 'custom'
+the_connection = mavutil.mavlink_connection(device='COM5', baud=115200) #, dialect = 'custom'
 #time.sleep(1)
 
 # # Wait for the first heartbeat
