@@ -145,202 +145,134 @@ spec = np.zeros((60,16)) #x: time steps to keep visible; y: number of mel bands
 
 # Setup figure
 plt.ion() # inetractive mode so updates show live 
+
+
 fig, ax = plt.subplots()
 im = ax.imshow(spec, aspect='auto', origin='lower',cmap='magma',interpolation='nearest', animated=True) #initialize and show image once
 ax.set_ylabel("Time"); ax.set_xlabel("Mel bands"); ax.set_title("Real-time Mel Spectrogram")
-#plt.show(block=False)
-#plt.pause(0.05) #pause for updates
 im.set_clim(vmin=40, vmax=90)  # rescale colors
+#plt.draw # redraws entire figure (axes, labels, ticks, background, image, etc)
 
 # Tell matplotlib we will use blitting
 # blitting -- aka block image transfer; plots only part of an image that have changed instead of entire figure 
-background = fig.canvas.copy_from_bbox(ax.bbox) # saves a clean background
+background = fig.canvas.copy_from_bbox(ax.bbox) # saves a clean background (the static parts: axes, ticks, grid, etc.)
 
 # Draw initial state
 ax.draw_artist(im)
-fig.canvas.blit(ax.bbox)
+fig.canvas.blit(ax.bbox)  #bbox- bounding box 
 fig.canvas.flush_events()
 
-#def animate(i):
-# with open('px4_data.csv', 'w', newline='') as file:
-# writer = csv.writer(file)
-# fieldnames = ['azimuth deg', 'q factor', 'time utc usec', 'time boot ms', 'yaw', 'pitch', 'roll', 'active intensity', 'mel intensity']
-# writer = csv.DictWriter(file, fieldnames=fieldnames)
-# writer.writeheader()
-#         # writer.writerow(name)
-# melSpec =[]
-
-# plt.ion() # enable interactive mode; initialize gui
-# fig2 = plt.figure()
-
-                # Launch the GUI
-# root = tk.Tk()
-# #get computers screen dimensions 
-# screen_width = root.winfo_screenwidth()    #print('screen_width:', screen_width )
-# screen_height = root.winfo_screenheight()  #print('screen_height:', screen_height)
-
-# # root window title & set display dimension to fit users screen
-# root.title("GUI")
-# root.geometry(f"{int(screen_width*.7)}" + 'x' + f"{int(screen_height*.6)}")  #width x height+x+y
-
-# # label frame for plots (head and spectrogam) 
-# plot_frame = tk.LabelFrame(root, padx=10, pady=10)
-# plot_frame.pack(side='top', fill="both", expand=True,  padx=10, pady=10)
-
-# img = mpimg.imread("head_topview.jpg")
+ind = 0
 
 
-# #plot button
-# # plotBtn = tk.Button(master=plot_frame, text = 'PLOT', bg = 'gray', fg ='black',
-# #                 width=8, height=1, padx=5, pady=5, command=lambda: plot())
-# # plotBtn.pack(side="top", padx=10)  #grid(row = 2, column=3, sticky= 'E') #, sticky=tk.W)
+#Launch the GUI
+root = tk.Tk()
+#get computers screen dimensions 
+screen_width = root.winfo_screenwidth()    #print('screen_width:', screen_width )
+screen_height = root.winfo_screenheight()  #print('screen_height:', screen_height)
 
-# quitButton =  tk.Button(plot_frame, text = 'QUIT', bg ='red', fg= 'black',
-#                                 width=8, height=1, padx=5, pady=5, command= root.quit) #root.destroy
-# quitButton.pack(side="top") 
+# root window title & set display dimension to fit users screen
+root.title("GUI")
+root.geometry(f"{int(screen_width*.7)}" + 'x' + f"{int(screen_height*.6)}")  #width x height+x+y
 
-# #def createImgPlot(self):
-# # create frame
-# imgFrame = tk.Frame(master=plot_frame) #,padx=10, pady=10)
-# imgFrame.pack(side="left")#grid(row=0, column=2)
-# #create plot with slider value updates 
+# label frame for plots (head and spectrogam) 
+plot_frame = tk.LabelFrame(root, padx=10, pady=10)
+plot_frame.pack(side='top', fill="both", expand=True,  padx=10, pady=10)
 
-# fig3, ax3 = plt.subplots(figsize=(5,4)) 
-# canvas3 = FigureCanvasTkAgg(fig3, master=imgFrame)  # Place in the plot frame
-# ax3.patch.set_facecolor('white') 
-# # #self.fig3.patch.set_facecolor('none') 
-# fig3.patch.set_alpha(0) # background (outside of figure)
-# canvas3.get_tk_widget().pack() # fill=tk.BOTH, expand=True) 
-# canvas3.get_tk_widget().configure(bg= '#F0F0F0')
+img = mpimg.imread("head_topview.jpg")
 
-# # add image axes (position: [left, bottom, width, height])
-# #image_xaxis, image_yaxis, image_width, image_height
-# ax_img = fig3.add_axes([.364, .35, .3, .3]) 
-# ax_img.imshow(img)
-# ax_img.axis('off')
 
-# ax3.set_aspect('equal') #cirularizes (oval without this)
-# ax3.set_xlim([-1.5,1.5])
-# ax3.set_ylim(-1.5,1.5)
+#plot button
+# plotBtn = tk.Button(master=plot_frame, text = 'PLOT', bg = 'gray', fg ='black',
+#                 width=8, height=1, padx=5, pady=5, command=lambda: plot())
+# plotBtn.pack(side="top", padx=10)  #grid(row = 2, column=3, sticky= 'E') #, sticky=tk.W)
 
-# circle = plt.Circle((0,0), 1, fill=False)
-# ax3.add_patch(circle)
-# canvas3.draw()
+quitButton =  tk.Button(plot_frame, text = 'QUIT', bg ='red', fg= 'black',
+                                width=8, height=1, padx=5, pady=5, command= root.quit) #root.destroy
+quitButton.pack(side="top") 
 
-# circle3 = plt.Circle((0,0), 1.25, fill=False)
-# ax3.add_patch(circle3)
-# canvas3.draw()
+#def createImgPlot(self):
+# create frame
+imgFrame = tk.Frame(master=plot_frame) #,padx=10, pady=10)
+imgFrame.pack(side="left")#grid(row=0, column=2)
+#create plot with slider value updates 
 
-# # self.ax3.axis('off')  this removes plot entirely (box)
-# # remove x and y axis ticks/labels
-# ax3.set_xticks([])
-# ax3.set_yticks([])
+fig3, ax3 = plt.subplots(figsize=(5,4)) 
+canvas3 = FigureCanvasTkAgg(fig3, master=imgFrame)  # Place in the plot frame
+ax3.patch.set_facecolor('white') 
+# #self.fig3.patch.set_facecolor('none') 
+fig3.patch.set_alpha(0) # background (outside of figure)
+canvas3.get_tk_widget().pack() # fill=tk.BOTH, expand=True) 
+canvas3.get_tk_widget().configure(bg= '#F0F0F0')
+
+# add image axes (position: [left, bottom, width, height])
+#image_xaxis, image_yaxis, image_width, image_height
+ax_img = fig3.add_axes([.364, .35, .3, .3]) 
+ax_img.imshow(img)
+ax_img.axis('off')
+
+ax3.set_aspect('equal') #cirularizes (oval without this)
+ax3.set_xlim([-1.5,1.5])
+ax3.set_ylim(-1.5,1.5)
+
+circle = plt.Circle((0,0), 1, fill=False)
+ax3.add_patch(circle)
+canvas3.draw()
+
+circle3 = plt.Circle((0,0), 1.25, fill=False)
+ax3.add_patch(circle3)
+canvas3.draw()
+
+# self.ax3.axis('off')  this removes plot entirely (box)
+# remove x and y axis ticks/labels
+ax3.set_xticks([])
+ax3.set_yticks([])
 
 while True: #time.time() < t_end: # while True:   #COMMAND_ACK  #UNKNOWN_292 type='SENSOR_AVS', 
-        res = the_connection.recv_match(blocking=True)  # receives all the messages available 
-        # print(res) # get a lot of data 
+        msg = the_connection.recv_match(blocking=True)  # receives all the messages available 
+        #print(msg) 
 
-        azimuth_deg = the_connection.messages['SENSOR_AVS'].azimuth_deg  #float
-        #print("azimuth_deg: ",azimuth_deg)
-        #get_azDeg.append(azimuth_deg)
-        
-        q_factor = the_connection.messages['SENSOR_AVS'].q_factor
-        #print("q factor: ", q_factor)
-        #get_qFactor.append(q_factor)
-
-        mel_intensity = the_connection.messages['SENSOR_AVS'].mel_intensity #list
-        #get_melInt.append(mel_intensity)
-        #print(mel_intensity)
+        azimuth_deg = the_connection.messages['SENSOR_AVS'].azimuth_deg #float                  #get_azDeg.append(azimuth_deg)
+        q_factor = the_connection.messages['SENSOR_AVS'].q_factor                               #get_qFactor.append(q_factor)
+        mel_intensity = the_connection.messages['SENSOR_AVS'].mel_intensity #list               #get_melInt.append(mel_intensity)
 
         active_intensity = the_connection.messages['SENSOR_AVS'].active_intensity
         print(active_intensity)
 
         time_utc_usec = the_connection.messages['SENSOR_AVS'].time_utc_usec
-        #print(time_utc_usec)
+        time_boot_ms  = the_connection.messages['ATTITUDE'].time_boot_ms                        #get_timeBootMs.append(time_boot_ms)
+        yaw = the_connection.messages['ATTITUDE'].yaw                                           #get_yaw.append(yaw)
+        pitch = the_connection.messages['ATTITUDE'].pitch                                       #get_pitch.append(pitch)
+        roll = the_connection.messages['ATTITUDE'].roll                                         #get_roll.append(roll)
 
-        time_boot_ms  = the_connection.messages['ATTITUDE'].time_boot_ms 
-        #get_timeBootMs.append(time_boot_ms)
-        #print(time_boot_ms)
-
-        yaw = the_connection.messages['ATTITUDE'].yaw  #GUI 
-        #get_yaw.append(yaw)
-
-        pitch = the_connection.messages['ATTITUDE'].pitch
-#        get_pitch.append(pitch)
-
-        roll = the_connection.messages['ATTITUDE'].roll
-        #get_roll.append(roll)
-
-                #time.sleep(.1)
-
-                #print("data extraction succesfull")
-
-                #data = [azimuth_deg,q_factor, time_boot_ms, yaw, pitch, roll, mel_intensity]
-
-                #['azimuth deg', 'q factor', 'mel intensity', 'time boot ms', 'yaw', 'pitch', 'roll']
-                #writer.writerow({'azimuth deg': azimuth_deg,'q factor': q_factor,'time utc usec': time_utc_usec,'time boot ms': time_boot_ms, 'yaw': yaw, 'pitch': pitch,'roll': roll, 'active intensity': active_intensity, 'mel intensity': mel_intensity})
-
-#print("file closed")
-# writer = csv.writer(file)
-# writer.writerow(name)
-#writer.writerows(str(azimuth_deg))
-
+        # spectrogram 
         new_row = mel_intensity  # shape: (16,)
 
         # Restore background
-        fig.canvas.restore_region(background)
+        fig.canvas.restore_region(background) #only copies pixels back
         
         # Update spectrogram data 
         spec = np.roll(spec, -1, axis=0)   # rolls vertically 
         spec[-1, :] = new_row              # insert data in new row
-        
-        # Update plot
-        im.set_data(spec)       #update existing image; replace old array without creating new imshow object
-        
-        # Redraw just the image
-        ax.draw_artist(im)
-        
-        # Blit the updated area
-        fig.canvas.blit(ax.bbox) 
-        fig.canvas.flush_events()
+
+        ind = ind+1
+        if ind == 30:
+                # Update data: change your artist
+                im.set_data(spec)       #update existing image; replace old array without creating new imshow object
+                
+                # Redraw just the changed artist
+                ax.draw_artist(im)
+                
+                # Blit the updated area (blit on screen)
+                fig.canvas.blit(ax.bbox) 
+                fig.canvas.flush_events()
+                ind = 0
+
+        # what is an artist? -- anything that gets drawn on a figure
+        # im = ax.imshow(data) -- im is an image artist (specifically an AxesImage object)
+        # Artists = the objects that matplotlib knows how to draw (lines, text, images, axes, etc.)
 
 
-
-
-
-
-#with open('data.json', 'w', encoding='utf-8') as file:
-        #name = ['azimuth deg'] #, 'q factor', 'mel intensity', 'time boot ms', 'yaw', 'pitch', 'roll']
-        #f.write(name)
-
-
-        # ax1.clear() 
-        # plt.plot(np.arange(0,16),mel_intensity)
-        # melSpec.append(mel_intensity)
-
-        # if len(melSpec) > 60: 
-        #         del melSpec[0:60]
-
-        # plt.imshow(melSpec,aspect='auto', origin='lower')
-        # plt.draw() #redraw figure
-        # plt.pause(0.1)
-        # #fig2.canvas.flush_events() # flush events 
-        # #time.sleep(0.1)
-        # #plt.clf() # clear figure 
-
-        #plt.show()
-# plt.ioff()
-# plt.show()
-#plt.colorbar()
-
-        #fig2 = plt.figure()
-# plt.imshow(melSpec)
-
-# fig2.canvas.draw() #redraw figure
-# fig2.canvas.flush_events() # flush events 
-# time.sleep(0.1)
-# plt.clf() # clear figure 
-#                         # plt.show()
 
 # ani = animation.FuncAnimation(fig, animate, interval=1000)
 # plt.show()
@@ -358,35 +290,35 @@ while True: #time.time() < t_end: # while True:   #COMMAND_ACK  #UNKNOWN_292 typ
 
                         # ###
 
-                # # Launch the GUI
-                # radAz = math.radians(azimuth_deg)
-                # radYaw = math.radians(yaw)
-                # print('yaw:', yaw)
+        # Launch the GUI
+        radAz = math.radians(azimuth_deg)
+        radYaw = math.radians(yaw)
+        print('yaw:', yaw)
 
-                #flipped to start at 90 degree and rotate clockwise
-        #         updateYaz = 1*np.cos(azimuth_deg)  #X 
-        #         updateXaz = 1*np.sin(azimuth_deg)  #Y
+        #flipped to start at 90 degree and rotate clockwise
+        updateYaz = 1*np.cos(azimuth_deg)  #X 
+        updateXaz = 1*np.sin(azimuth_deg)  #Y
 
-        #         circle2 = plt.Circle((updateXaz,updateYaz),.05, color = 'red')
-        #         ax3.add_patch(circle2)
-        #         canvas3.draw()
+        circle2 = plt.Circle((updateXaz,updateYaz),.05, color = 'red')
+        ax3.add_patch(circle2)
+        canvas3.draw()
 
-        #         updateY2yaw = 1.25*np.cos(yaw)  #X 
-        #         updateX2yaw = 1.25*np.sin(yaw)  #Y
+        updateY2yaw = 1.25*np.cos(yaw)  #X 
+        updateX2yaw = 1.25*np.sin(yaw)  #Y
 
-        #         circle4 = plt.Circle((updateX2yaw,updateY2yaw),.05, color = 'blue')
-        #         ax3.add_patch(circle4)
-        #         canvas3.draw()
+        circle4 = plt.Circle((updateX2yaw,updateY2yaw),.05, color = 'blue')
+        ax3.add_patch(circle4)
+        canvas3.draw()
 
-        #         ax3.set_xticks([])
-        #         ax3.set_yticks([])
-        #         canvas3.flush_events()  
-        #         #time.sleep(.1)
-        #         circle2.remove()
-        #         circle4.remove()
+        ax3.set_xticks([])
+        ax3.set_yticks([])
+        canvas3.flush_events()  
+        #time.sleep(.1)
+        circle2.remove()
+        circle4.remove()
 
 
-        # root.mainloop()
+        root.mainloop()
 
 
 #print("writing data to file")
@@ -398,3 +330,28 @@ while True: #time.time() < t_end: # while True:   #COMMAND_ACK  #UNKNOWN_292 typ
 # f.write('pitch: ' + str(get_pitch) + '\n')
 # f.write('roll: ' + str(get_roll) + '\n')
 #       print("data extraction succesfull")
+
+# with open('px4_data.csv', 'w', newline='') as file:
+# writer = csv.writer(file)
+# fieldnames = ['azimuth deg', 'q factor', 'time utc usec', 'time boot ms', 'yaw', 'pitch', 'roll', 'active intensity', 'mel intensity']
+# writer = csv.DictWriter(file, fieldnames=fieldnames)
+# writer.writeheader()
+#         # writer.writerow(name)
+
+
+
+                #time.sleep(.1)
+
+                #print("data extraction succesfull")
+
+                #data = [azimuth_deg,q_factor, time_boot_ms, yaw, pitch, roll, mel_intensity]
+
+                #['azimuth deg', 'q factor', 'mel intensity', 'time boot ms', 'yaw', 'pitch', 'roll']
+                #writer.writerow({'azimuth deg': azimuth_deg,'q factor': q_factor,'time utc usec': time_utc_usec,'time boot ms': time_boot_ms, 'yaw': yaw, 'pitch': pitch,'roll': roll, 'active intensity': active_intensity, 'mel intensity': mel_intensity})
+
+#print("file closed")
+
+
+#with open('data.json', 'w', encoding='utf-8') as file:
+        #name = ['azimuth deg'] #, 'q factor', 'mel intensity', 'time boot ms', 'yaw', 'pitch', 'roll']
+        #f.write(name)
