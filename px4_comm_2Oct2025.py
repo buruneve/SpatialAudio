@@ -206,8 +206,6 @@ def updateSpectrogram():
 
     mel_intensity, yaw, azimuth_deg, active_intensity, q_factor  =  getFPV_data()
 
-    if 60 <= active_intensity < 65: 
-        size = 1
     if 65 <= active_intensity < 70: 
         size = 1.5
     elif 70 <= active_intensity < 75: 
@@ -266,22 +264,20 @@ def arduinoComm():
 
     while True:
         mel_intensity, yaw, azimuth_deg, active_intensity, q_factor  =  getFPV_data()
-        deg = (math.degrees(azimuth_deg) +360) % 360 #normalize yaw
+        deg = (math.degrees(yaw) +360) % 360 #normalize yaw
         print(deg)
    
         if serialPort and serialPort.is_open:
             if 135 <= deg < 180: 
                 serialPort.write('R'.encode())
                 #serialPort.write(b'R')
-
-
             elif 180 <= deg < 225: 
                 serialPort.write('L'.encode())
 
             else:
                 serialPort.write('C'.encode())
 
-        time.sleep(0.05)
+            time.sleep(0.05)
 
 
 # -------- threads ---------
