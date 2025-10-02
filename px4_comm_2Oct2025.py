@@ -36,7 +36,7 @@ import serial
 mavutil.set_dialect("development")
 
 # Start a listening connection
-the_connection = mavutil.mavlink_connection(device='COM5', baud=115200) 
+the_connection = mavutil.mavlink_connection(device='COM6', baud=115200) 
 
 # # Wait for the first heartbeat
 # #   This sets the system and component ID of remote system for the link
@@ -52,7 +52,7 @@ message = the_connection.mav.command_long_encode(    #encode  #.command_long_enc
         the_connection.target_component,  # Target component ID
         mavutil.mavlink.MAV_CMD_SET_MESSAGE_INTERVAL,  # ID of command to send  #MAV_CMD_REQUEST_MESSAGE
         0,  # Confirmation
-        message_id, #mavutil.mavlink.MAVLINK_MSG_ID_SENSOR_AVS  # param1: Message ID to be streamed
+        message_id, #mavutil.mavlink.MAVLINK_MSG_ID_SENSOR_AVcdS  # param1: Message ID to be streamed
         50000, # param2: Interval in microseconds
         0,0,0,0,0)
 print(message)
@@ -68,7 +68,7 @@ print('')
 # ------- serial port connnection ---------
 try:
     # initialize and open serial port (if port is given)
-    self.serialPort = serial.Serial(port='COM3', baudrate=9600, timeout=1) #115200
+    serialPort = serial.Serial(port='COM7', baudrate=9600, timeout=1) #115200
     time.sleep(2)  # Wait for Arduino to reset
 
 except serial.SerialException:
@@ -187,18 +187,18 @@ fig.canvas.blit(ax.bbox)  #bbox- bounding box
 # data acquisition thread
 def getFPV_data():
     while True: #time.time() < t_end:                                                           #COMMAND_ACK  #UNKNOWN_292 type='SENSOR_AVS', 
-            msg = the_connection.recv_match(blocking=True)  # receives all the messages available 
+        msg = the_connection.recv_match(blocking=True)  # receives all the messages available 
 
-            azimuth_deg = the_connection.messages['SENSOR_AVS'].azimuth_deg #float                                         
-            mel_intensity = the_connection.messages['SENSOR_AVS'].mel_intensity #list               
-            active_intensity = the_connection.messages['SENSOR_AVS'].active_intensity
-            q_factor = the_connection.messages['SENSOR_AVS'].q_factor   
-            yaw = the_connection.messages['ATTITUDE'].yaw
-            pitch = the_connection.messages['ATTITUDE'].pitch                                      
-            roll = the_connection.messages['ATTITUDE'].roll                               
+        azimuth_deg = the_connection.messages['SENSOR_AVS'].azimuth_deg #float                                         
+        mel_intensity = the_connection.messages['SENSOR_AVS'].mel_intensity #list               
+        active_intensity = the_connection.messages['SENSOR_AVS'].active_intensity
+        q_factor = the_connection.messages['SENSOR_AVS'].q_factor   
+        yaw = the_connection.messages['ATTITUDE'].yaw
+        pitch = the_connection.messages['ATTITUDE'].pitch                                      
+        roll = the_connection.messages['ATTITUDE'].roll                               
 
-            return mel_intensity, yaw, azimuth_deg, active_intensity, q_factor             
-            #yield mel_intensity, yaw, azimuth_deg
+        return mel_intensity, yaw, azimuth_deg, active_intensity, q_factor             
+        #yield mel_intensity, yaw, azimuth_deg
                                 
 def updateSpectrogram():
         # # --------------------- Spectrogram ----------------------
@@ -267,24 +267,28 @@ def arduinoComm():
     while True:
         mel_intensity, yaw, azimuth_deg, active_intensity, q_factor  =  getFPV_data()
         deg = (math.degrees(azimuth_deg) +360) % 360 #normalize yaw
+        print(deg)
    
-        if self.serialPort and self.serialPort.is_open:
+        if serialPort and serialPort.is_open:
             if 135 <= deg < 180: 
-                self.serialPort.write('R'.encode())
+                serialPort.write('R'.encode())
+                #serialPort.write(b'R')
+
 
             elif 180 <= deg < 225: 
-                self.serialPort.write('L'.encode())
+                serialPort.write('L'.encode())
 
             else:
-                self.serialPort.write('C'.encode())
+                serialPort.write('C'.encode())
 
         time.sleep(0.05)
 
 
 # -------- threads ---------
 threading.Thread(target=getFPV_data, daemon=True).start()
-threading.Thread(target=arduinoComm, daemon=True).start()
 updateSpectrogram()
+threading.Thread(target=arduinoComm, daemon=True).start()
+#updateSpectrogram()
 root.mainloop()
 
 
