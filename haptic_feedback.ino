@@ -37,11 +37,11 @@ void loop() {
     // Serial.print("Received command: ");
     // Serial.println(cmd);
 
-    if (cmd == 'A') {
+    if (cmd == 'R') {
       // Right motor (channel 0)
       triggerHaptic(0);
     } 
-    else if (cmd == 'B') {
+    else if (cmd == 'L') {
       // Left motor (channel 1)
       triggerHaptic(1);
     }
