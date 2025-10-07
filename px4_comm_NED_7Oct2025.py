@@ -79,7 +79,7 @@ try:
     time.sleep(2)  # Wait for Arduino to reset
 
 except serial.SerialException:
-    print("could not open serial port")
+    print("could not open arduino serial port")
 
 
 # # -------------------------- Launch the GUI ----------------------------------------
@@ -183,31 +183,31 @@ canvas = FigureCanvasTkAgg(fig, master=specFrame)
 canvas_widget = canvas.get_tk_widget()
 canvas_widget.pack(side = tk.RIGHT) #fill=tk.BOTH, expand=True)
 
-# # # Tell matplotlib we will use blitting
-# # # blitting -- aka block image transfer; plots only part of an image that have changed instead of entire figure 
-# background = fig.canvas.copy_from_bbox(ax.bbox) # saves a clean background (the static parts: axes, ticks, grid, etc.)
+# # Tell matplotlib we will use blitting
+# # blitting -- aka block image transfer; plots only part of an image that have changed instead of entire figure 
+background = fig.canvas.copy_from_bbox(ax.bbox) # saves a clean background (the static parts: axes, ticks, grid, etc.)
 
-# # # Draw initial state
-# ax.draw_artist(im)
-# fig.canvas.blit(ax.bbox)  #bbox- bounding box 
+# # Draw initial state
+ax.draw_artist(im)
+fig.canvas.blit(ax.bbox)  #bbox- bounding box 
 
 # ----------- NED plot ---------------------------------------
 # --- inside your GUI setup section ---
 
-# Create NED plot
-figNED = plt.figure(figsize=(4,4))
-axNED = figNED.add_subplot(111, projection='3d')
-canvasNED = FigureCanvasTkAgg(figNED, master=nedFrame)
-canvasNED.get_tk_widget().pack()
+# # Create NED plot
+# figNED = plt.figure(figsize=(4,4))
+# axNED = figNED.add_subplot(111, projection='3d')
+# canvasNED = FigureCanvasTkAgg(figNED, master=nedFrame)
+# canvasNED.get_tk_widget().pack()
 
 
-axNED.set_title("NED Trajectory")
-axNED.set_xlabel("North [km]")
-axNED.set_ylabel("East [km]")
-axNED.set_zlabel("Down km]")
-axNED.grid(True)
-axNED.set_aspect("equal")
-axNED.legend()
+# axNED.set_title("NED Trajectory")
+# axNED.set_xlabel("North [km]")
+# axNED.set_ylabel("East [km]")
+# axNED.set_zlabel("Down km]")
+# axNED.grid(True)
+# axNED.set_aspect("equal")
+# axNED.legend()
 
 
 # data acquisition thread
@@ -220,8 +220,8 @@ def getFPV_data():
         if msg is None:
              continue
         try:
-            # azimuth_deg = the_connection.messages['SENSOR_AVS'].azimuth_deg #float                                         
-            # mel_intensity = the_connection.messages['SENSOR_AVS'].mel_intensity #list               
+            #azimuth_deg = the_connection.messages['SENSOR_AVS'].azimuth_deg #float                                         
+            mel_intensity = the_connection.messages['SENSOR_AVS'].mel_intensity #list              
             # active_intensity = the_connection.messages['SENSOR_AVS'].active_intensity
             # q_factor = the_connection.messages['SENSOR_AVS'].q_factor   
 
@@ -244,24 +244,24 @@ def getFPV_data():
         # csv_writer.writerow({'north': north,'east': east, 'down': down, 'yaw': yaw, 'pitch': pitch,'roll': roll})
         # csv_file.flush()  #if programs stopped, will save last few rows
 
-        #return mel_intensity, yaw, azimuth_deg, active_intensity, q_factor, roll     
+        return mel_intensity   
       
                                 
 def updateSpectrogram():
         # # --------------------- Spectrogram ----------------------
-    global ind,background2 #spec
+    global ind,background2,spec
 
-    #mel_intensity, yaw, azimuth_deg, active_intensity, q_factor, roll,yaw = getFPV_data()
+    mel_intensity = getFPV_data()
 
     try:
-         north, east, down,yaw,pitch,roll = dataQ.get_nowait()
+         north, east, down,yaw,pitch,roll = dataQ.get() #_nowait()
+         #print(mel_intensity)
     #print('north:', north)
     except queue.Empty:
          root.after(1,updateSpectrogram)
          return
     
-    #updateTrajectory()#north,east,down)
-    #updateNED()
+
     roll = (math.degrees(roll) +360) % 360 #normalize roll
     #print('roll:', roll)
 
@@ -281,13 +281,13 @@ def updateSpectrogram():
     #     size =1 
 
     # restore background of spectrogram and the head plots; only copies pixels back
-    #fig.canvas.restore_region(background) 
+    fig.canvas.restore_region(background) 
     canvas3.restore_region(background2)   
 
-    # Update spectrogram data 
-    # new_row = mel_intensity  # shape: (16,)
-    # spec = np.roll(spec, -1, axis=0)   # rolls vertically 
-    # spec[-1, :] = new_row              # insert data in new row
+    #Update spectrogram data 
+    new_row = mel_intensity  # shape: (16,)
+    spec = np.roll(spec, -1, axis=0)   # rolls vertically 
+    spec[-1, :] = new_row              # insert data in new row
 
     #flipped to start at 90 degree and rotate clockwise
     updateYaz = 1*np.cos(roll)  #X #az 
@@ -297,11 +297,11 @@ def updateSpectrogram():
 
     ind = ind+1
     # count to 5 before plotting then reset to 0
-    if ind == 5:
-            # Update data: change your artist
-            # im.set_data(spec)         # update existing image; replace old array without creating new imshow object
-            # ax.draw_artist(im)        # Redraw just the changed artist
-            # fig.canvas.blit(ax.bbox)  # Blit the updated area (blit on screen)
+    if ind == 10:
+            #Update data: change your artist
+            im.set_data(spec)         # update existing image; replace old array without creating new imshow object
+            ax.draw_artist(im)        # Redraw just the changed artist
+            fig.canvas.blit(ax.bbox)  # Blit the updated area (blit on screen)
 
             circle_red.set_center((updateXaz, updateYaz))  # set_center() updates/moves circle
             # circle_red.set_radius((0.05 * size)) 
@@ -319,15 +319,15 @@ def updateSpectrogram():
     root.after(1, updateSpectrogram) # after 1ms run updateSpectrogram() without freezing/lag in tkinter
 
 
-def plotTrajectory():
+# def plotTrajectory():
 
-    # read CSV file
-    df = pd.read_csv('px4_data_2025-10-07_07-35-25.csv')
-    #df = pd.read_csv('px4_data_2025-10-06_20-17-55.csv')
+#     # read CSV file
+#     df = pd.read_csv('px4_data_2025-10-07_07-35-25.csv')
+#     #df = pd.read_csv('px4_data_2025-10-06_20-17-55.csv')
 
-    north, east, down = df['north'],df['east'],df['down']
+#     north, east, down = df['north'],df['east'],df['down']
 
-    axNED.plot(north, east, down) 
+#     axNED.plot(north, east, down) 
 
 
 
@@ -361,7 +361,7 @@ def plotTrajectory():
 # -------- threads ---------
 threading.Thread(target=getFPV_data, daemon=True).start()
 updateSpectrogram()
-plotTrajectory()
+#plotTrajectory()
 #threading.Thread(target=arduinoComm, daemon=True).start()
 #updateSpectrogram()
 root.mainloop()
