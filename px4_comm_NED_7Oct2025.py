@@ -209,7 +209,7 @@ fig.canvas.blit(ax.bbox)  #bbox- bounding box
 # axNED.set_aspect("equal")
 # axNED.legend()
 
-
+#
 # data acquisition thread
 def getFPV_data():
     # timer for data collection
@@ -220,7 +220,7 @@ def getFPV_data():
         if msg is None:
              continue
         try:
-            #azimuth_deg = the_connection.messages['SENSOR_AVS'].azimuth_deg #float                                         
+            azimuth_deg = the_connection.messages['SENSOR_AVS'].azimuth_deg #float                                         
             mel_intensity = the_connection.messages['SENSOR_AVS'].mel_intensity #list              
             # active_intensity = the_connection.messages['SENSOR_AVS'].active_intensity
             # q_factor = the_connection.messages['SENSOR_AVS'].q_factor   
@@ -244,14 +244,14 @@ def getFPV_data():
         # csv_writer.writerow({'north': north,'east': east, 'down': down, 'yaw': yaw, 'pitch': pitch,'roll': roll})
         # csv_file.flush()  #if programs stopped, will save last few rows
 
-        return mel_intensity   
+        return mel_intensity, azimuth_deg  
       
                                 
 def updateSpectrogram():
         # # --------------------- Spectrogram ----------------------
     global ind,background2,spec
 
-    mel_intensity = getFPV_data()
+    mel_intensity, azimuth_deg = getFPV_data()
 
     try:
          north, east, down,yaw,pitch,roll = dataQ.get() #_nowait()
@@ -290,8 +290,8 @@ def updateSpectrogram():
     spec[-1, :] = new_row              # insert data in new row
 
     #flipped to start at 90 degree and rotate clockwise
-    updateYaz = 1*np.cos(roll)  #X #az 
-    updateXaz = 1*np.sin(roll)  #Y
+    updateYaz = 1*np.cos(azimuth_deg)  #X #az 
+    updateXaz = 1*np.sin(azimuth_deg)  #Y
     updateYyaw = 1.25*np.cos(yaw)  #X #yaw
     updateXyaw = 1.25*np.sin(yaw)  #Y
 
