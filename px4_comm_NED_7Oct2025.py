@@ -2,6 +2,8 @@
 # communicate with px4: send/receive messages
 
 from pymavlink import mavutil
+import serial
+
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
@@ -15,7 +17,7 @@ import math
 import matplotlib.image as mpimg 
 import threading
 import queue 
-import serial 
+from collections import deque 
 
 import csv
 import datetime
@@ -35,15 +37,18 @@ import datetime
 #     csv_writer.writeheader()
 
 
-# queue for data 
-dataQ = queue.Queue()
+# queue for data; type of data structure 
+dataQ = queue.Queue() # FIFO: first-in, first-out 
+
+#deque;  stack data structure
+de = deque() # add/remove elements from both ends; FIFO and LIFO (last-in, first-out)
 
 
 # set mavlink dialect
 mavutil.set_dialect("development")
 
 # Start a listening connection
-the_connection = mavutil.mavlink_connection(device='COM6', baud=115200) 
+the_connection = mavutil.mavlink_connection(device='COM5', baud=115200) 
 
 # # Wait for the first heartbeat
 # #   This sets the system and component ID of remote system for the link
@@ -54,12 +59,12 @@ print("Heartbeat from system (system %u component %u)" % (the_connection.target_
 message_id = 292 
 #print("message_id: ",message_id)
 
-message = the_connection.mav.command_long_encode(    #encode  #.command_long_encode
+message = the_connection.mav.command_long_encode(   
         the_connection.target_system,  # Target system ID
         the_connection.target_component,  # Target component ID
-        mavutil.mavlink.MAV_CMD_SET_MESSAGE_INTERVAL,  # ID of command to send  #MAV_CMD_REQUEST_MESSAGE
+        mavutil.mavlink.MAV_CMD_SET_MESSAGE_INTERVAL,  # ID of command to send  
         0,  # Confirmation
-        message_id, #mavutil.mavlink.MAVLINK_MSG_ID_SENSOR_AVcdS  # param1: Message ID to be streamed
+        message_id,   # param1: Message ID to be streamed
         50000, # param2: Interval in microseconds
         0,0,0,0,0)
 print(message)
@@ -71,11 +76,10 @@ msg2 = the_connection.recv_match(type='COMMAND_ACK',blocking=True)  # acknowledg
 print(msg2) 
 print('')
 
-
 # ------- serial port connnection ---------
 try:
     # initialize and open serial port (if port is given)
-    serialPort = serial.Serial(port='COM7', baudrate=9600, timeout=1) #115200
+    serialPort = serial.Serial(port='COM4', baudrate=115200, timeout=1) #115200
     time.sleep(2)  # Wait for Arduino to reset
 
 except serial.SerialException:
@@ -101,7 +105,6 @@ plot_frame = tk.LabelFrame(root, padx=10, pady=10)
 plot_frame.pack(side='top', fill="both", expand=True,  padx=10, pady=10)
 
 img = mpimg.imread("head_topview.jpg")
-
 
 #plot button
 # plotBtn = tk.Button(master=plot_frame, text = 'PLOT', bg = 'gray', fg ='black',
@@ -171,6 +174,7 @@ background2 = canvas3.copy_from_bbox(ax3.bbox)
 
 # ------------------------------------------------------------------------------------
 ind = 0
+ind2=0
 spec = np.zeros((60,16)) # storage for spectrogram; x: time steps to keep visible; y: number of mel bands
 
 fig, ax = plt.subplots(figsize=(5,4))
@@ -194,21 +198,28 @@ fig.canvas.blit(ax.bbox)  #bbox- bounding box
 # ----------- NED plot ---------------------------------------
 # --- inside your GUI setup section ---
 
-# # Create NED plot
-# figNED = plt.figure(figsize=(4,4))
-# axNED = figNED.add_subplot(111, projection='3d')
-# canvasNED = FigureCanvasTkAgg(figNED, master=nedFrame)
-# canvasNED.get_tk_widget().pack()
+# Create NED plot
+figNED = plt.figure(figsize=(4,4))
+axNED = figNED.add_subplot(111, projection='3d')
+canvasNED = FigureCanvasTkAgg(figNED, master=nedFrame)
+canvasNED.get_tk_widget().pack()
 
 
-# axNED.set_title("NED Trajectory")
-# axNED.set_xlabel("North [km]")
-# axNED.set_ylabel("East [km]")
-# axNED.set_zlabel("Down km]")
-# axNED.grid(True)
-# axNED.set_aspect("equal")
-# axNED.legend()
+axNED.set_title("NED Trajectory")
+axNED.set_xlabel("North [km]")
+axNED.set_ylabel("East [km]")
+axNED.set_zlabel("Down km]")
+axNED.grid(True)
+#axNED.set_aspect("equal")
+axNED.legend()
+#north_data, east_data, down_data = [], [], []
+#line, = axNED.plot([],[],[])
 
+# data storage 
+max_data = 2000
+north_data = deque(maxlen=max_data)
+east_data = deque(maxlen=max_data)
+down_data = deque(maxlen=max_data)
 #
 # data acquisition thread
 def getFPV_data():
@@ -236,7 +247,7 @@ def getFPV_data():
         except KeyError:
              continue
 
-        dataQ.put((north,east,down, yaw, pitch, roll))     
+        dataQ.put(( north, east, down,yaw,pitch,roll,azimuth_deg, mel_intensity )) #((north,east,down, yaw, pitch, roll))     
         
         # ----- write to csv -----
         ##writer.writerow({'azimuth deg': azimuth_deg,'q factor': q_factor,'yaw': yaw, 'pitch': pitch,'roll': roll, 'active intensity': active_intensity, 'mel intensity': mel_intensity})
@@ -244,17 +255,17 @@ def getFPV_data():
         # csv_writer.writerow({'north': north,'east': east, 'down': down, 'yaw': yaw, 'pitch': pitch,'roll': roll})
         # csv_file.flush()  #if programs stopped, will save last few rows
 
-        return mel_intensity, azimuth_deg  
+        #return north, east, down,yaw,pitch,roll,azimuth_deg, mel_intensity  
       
                                 
 def updateSpectrogram():
         # # --------------------- Spectrogram ----------------------
     global ind,background2,spec
 
-    mel_intensity, azimuth_deg = getFPV_data()
+#    north, east, down,yaw,pitch,roll,azimuth_deg,mel_intensity   = getFPV_data()
 
     try:
-         north, east, down,yaw,pitch,roll = dataQ.get() #_nowait()
+          north, east, down,yaw,pitch,roll,azimuth_deg, mel_intensity = dataQ.get_nowait() #north, east, down,yaw,pitch,roll 
          #print(mel_intensity)
     #print('north:', north)
     except queue.Empty:
@@ -297,7 +308,7 @@ def updateSpectrogram():
 
     ind = ind+1
     # count to 5 before plotting then reset to 0
-    if ind == 10:
+    if ind == 5:
             #Update data: change your artist
             im.set_data(spec)         # update existing image; replace old array without creating new imshow object
             ax.draw_artist(im)        # Redraw just the changed artist
@@ -329,22 +340,50 @@ def updateSpectrogram():
 
 #     axNED.plot(north, east, down) 
 
+def realtimeTrajectory():
+    global ind2
+
+    north, east, down,yaw,pitch,roll,azimuth_deg, mel_intensity =dataQ.get(timeout=1)
+
+    north_data.append(north)
+    east_data.append(east)
+    down_data.append(down)  
+
+    ind2 = ind2 +1
+
+    if ind2 == 20:
+        axNED.cla() # clear previous frame
+        axNED.plot(north_data, east_data, down_data) 
+        #line, = axNED.plot([],[],[])
+
+        # line.set_data(north_data, north_data)
+        # line.set_3d_properties(down_data)
+        ## axNED.view_init(elev=30, azim=(time.time() * 15) % 360)  # rotate plot
+    
+        canvasNED.draw_idle()
+        ind2 = 0
+
+    root.after(1, realtimeTrajectory)
+
 
 
 # def arduinoComm():
+#     pass
 #     # communicate with Arduino to play haptic feedback
 #     while True:
 #         try:
-#             north,east,down,yaw, pitch, roll =dataQ.get(timeout=1)
+#             north, east, down,yaw,pitch,roll,azimuth_deg, mel_intensity =dataQ.get(timeout=1) # north,east,down,yaw, pitch, roll
 
 #         except queue.Empty:
 #             root.after(1, updateSpectrogram)
 #             return
 
-#         #mel_intensity, yaw, azimuth_deg, active_intensity, q_factor  =  getFPV_data()
-#         #yaw, roll =getFPV_data()
+     
+#      #   north, east, down,yaw,pitch,roll,azimuth_deg,mel_intensity =getFPV_data()
+#         #print(yaw)
+
 #         deg = (math.degrees(yaw) +360) % 360 #normalize yaw
-#         #print(deg)
+#         print("deg:",deg)
    
 #         if serialPort and serialPort.is_open:
 #             if 135 <= deg < 180: 
@@ -360,10 +399,11 @@ def updateSpectrogram():
 
 # -------- threads ---------
 threading.Thread(target=getFPV_data, daemon=True).start()
-updateSpectrogram()
+#updateSpectrogram()
 #plotTrajectory()
 #threading.Thread(target=arduinoComm, daemon=True).start()
-#updateSpectrogram()
+updateSpectrogram()
+realtimeTrajectory()
 root.mainloop()
 
 
