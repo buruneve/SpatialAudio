@@ -111,10 +111,8 @@ ax = fig.add_subplot(111)
 canvas = FigureCanvasTkAgg(fig, master=imgFrame)
 canvas.get_tk_widget().pack()
 
-
 ax.set_xlabel("Time")
 ax.set_ylabel("Active intesity")
-
 
 # data storage 
 max_data = 2000
