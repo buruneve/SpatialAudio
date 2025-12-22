@@ -45,7 +45,6 @@ print("Heartbeat from system (system %u component %u)" % (the_connection1.target
 the_connection2.wait_heartbeat()  
 print("Heartbeat from system (system %u component %u)" % (the_connection2.target_system, the_connection2.target_component))
 
-
 # sensor_avs message ID
 message_id = 296
 
@@ -82,7 +81,6 @@ the_connection2.mav.send(message2)
 msg2 = the_connection2.recv_match(type='COMMAND_ACK',blocking=True)  # acknowledge command 
 print(msg2) 
 print('')
-
 
 # # -------------------------- Launch the GUI ----------------------------------------
 root = tk.Tk()
