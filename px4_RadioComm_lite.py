@@ -275,35 +275,3 @@ root.mainloop()
 # print("msg2: ", ms2)
 # ts2=datetime.datetime.now()#time.time
 # print("ts2: ",ts2)
-
-
-# print(ms)
-# aI= msg.active_intensity
-# print(sys.getsizeof(aI))
-# tstamp=msg.timestamp
-# print(tstamp)
-# tstamp_smpl = msg.timestamp_sample
-# # print(tstamp_smpl)
-# time=msg.time_usec
-# print(time)s
-# q_factor = the_connection.messages['SENSOR_AVS'].q_factor  
-
-
-# try:
-#     # Get the most recent data, discard old frames
-#     data = None
-#     while True:
-#         try:
-#             data = dataQ1.get_nowait()
-#         except queue.Empty:
-#             break
-    
-#     if data is None:
-#         root.after(1, updateSpectrogram1)
-#         return
-        
-#     yaw, pitch, roll, azimuth_deg, mel_intensity, active_intensity = data
-    
-# except Exception as e:
-#     root.after(1, updateSpectrogram1)
-#     return
