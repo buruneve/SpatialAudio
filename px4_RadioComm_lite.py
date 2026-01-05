@@ -23,6 +23,7 @@ import csv
 import datetime
 
 
+print(int(time.time()))
 
 # queue for data; type of data structure 
 dataQ1 = queue.Queue() # FIFO: first-in, first-out 
@@ -39,14 +40,15 @@ the_connection2 = mavutil.mavlink_connection(device='COM7', baud=57600) #COM6  1
 the_connection1 = mavutil.mavlink_connection(device='COM9', baud=57600)
 
 # # Wait for the first heartbeat
-# #   This sets the system and component ID of remote system for the link
+##  This sets the system and component ID of remote system for the link
 the_connection1.wait_heartbeat()  
 print("Heartbeat from system (system %u component %u)" % (the_connection1.target_system, the_connection1.target_component))
 the_connection2.wait_heartbeat()  
 print("Heartbeat from system (system %u component %u)" % (the_connection2.target_system, the_connection2.target_component))
 
+
 # sensor_avs message ID
-message_id = 296
+message_id = 296 #292
 
 message1 = the_connection1.mav.command_long_encode(   
         the_connection1.target_system,  # Target system ID
@@ -54,7 +56,7 @@ message1 = the_connection1.mav.command_long_encode(
         mavutil.mavlink.MAV_CMD_SET_MESSAGE_INTERVAL,  # ID of command to send  
         0,  # Confirmation
         message_id,   # param1: Message ID to be streamed
-        50000, # param2: Interval in microseconds
+        0, # param2: Interval in microseconds
         0,0,0,0,0)
 print(message1)
 
@@ -71,7 +73,7 @@ message2 = the_connection2.mav.command_long_encode(
         mavutil.mavlink.MAV_CMD_SET_MESSAGE_INTERVAL,  # ID of command to send  
         0,  # Confirmation
         message_id,   # param1: Message ID to be streamed
-        50000, # param2: Interval in microseconds
+        0, # param2: Interval in microseconds
         0,0,0,0,0)
 print(message2)
 
@@ -81,6 +83,7 @@ the_connection2.mav.send(message2)
 msg2 = the_connection2.recv_match(type='COMMAND_ACK',blocking=True)  # acknowledge command 
 print(msg2) 
 print('')
+
 
 # # -------------------------- Launch the GUI ----------------------------------------
 root = tk.Tk()
@@ -114,8 +117,36 @@ canvas.get_tk_widget().pack()
 ax.set_xlabel("Time")
 ax.set_ylabel("Active intesity")
 
+##
+# fiG, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4)) #
+# canvas = FigureCanvasTkAgg(fiG, master=imgFrame)
+# canvas.get_tk_widget().pack()
+
+
+# ind = 0
+# ind2=0
+# spec = np.zeros((60,16)) # storage for spectrogram; x: time steps to keep visible; y: number of mel bands
+
+# fig, ax = plt.subplots(figsize=(5,4))
+# im = ax.imshow(spec, aspect='auto', origin='lower',cmap='magma',interpolation='nearest', animated=True) #initialize and show image once
+# ax.set_ylabel("Time"); ax.set_xlabel("Mel bands"); ax.set_title("Real-time Mel Spectrogram")
+# im.set_clim(vmin=40, vmax=90)  # rescale colors
+# #plt.draw # redraws entire figure (axes, labels, ticks, background, image, etc)
+
+# canvas = FigureCanvasTkAgg(fig, master=imgFrame)
+# canvas_widget = canvas.get_tk_widget()
+# canvas_widget.pack(side = tk.RIGHT) #fill=tk.BOTH, expand=True)
+
+# # # Tell matplotlib we will use blitting
+# # # blitting -- aka block image transfer; plots only part of an image that have changed instead of entire figure 
+# background = fig.canvas.copy_from_bbox(ax.bbox) # saves a clean background (the static parts: axes, ticks, grid, etc.)
+
+# # # Draw initial state
+# ax.draw_artist(im)
+# fig.canvas.blit(ax.bbox)  #bbox- bounding box 
+
 # data storage 
-max_data = 2000
+max_data = 100
 actv1 = deque(maxlen=max_data)
 actv2 = deque(maxlen=max_data)
 tt1 = deque(maxlen=max_data)
@@ -130,12 +161,14 @@ def getFPV_data1():
     """thread for connection 1"""
 
     while True:            
-        msg1 = the_connection1.recv_match(blocking=True)  
+        msg1 = the_connection1.recv_match(type='SENSOR_AVS_LITE',blocking=True)  
+        #print(msg1)
 
         if msg1: 
-            t1 = the_connection1.messages['SENSOR_AVS'].timestamp                     
-            act1 = the_connection1.messages['SENSOR_AVS'].active_intensity
 
+            t1 = msg1.timestamp #_sample
+            act1= msg1.active_intensity 
+            #print(t1)
 
         dataQ1.put((t1,act1)) 
 
@@ -145,15 +178,16 @@ def getFPV_data2():
     """thread for connection 2"""
 
     while True: 
-        msg2 = the_connection2.recv_match(blocking=True) #type='SENSOR_AVS', 
+        msg2 = the_connection2.recv_match(type = 'SENSOR_AVS_LITE',blocking=True) #type='SENSOR_AVS', 
         if msg2:
-            t2 = the_connection2.messages['SENSOR_AVS'].timestamp                       
-            act2 = the_connection2.messages['SENSOR_AVS'].active_intensity              
-
-        dataQ2.put((t2,act2))
-                                
+            
+            t2 = msg2.timestamp #timestamp_sample
+            act2= msg2.active_intensity 
+            
+        dataQ2.put((t2,act2)) #mel2
+                             
 def updateLinePlot():
-        # # --------------------- line plot ----------------------
+        # --------------------- line plot ----------------------
 
     try:
         t1,act1 = dataQ1.get_nowait()
@@ -162,18 +196,51 @@ def updateLinePlot():
          root.after(1,updateLinePlot)
          return
 
-
     actv1.append(act1)
     tt1.append(t1)
 
     actv2.append(act2)
     tt2.append(t2)
 
+
     ax.cla() # clear previous frame
-    ax.plot(tt1,actv1, 'b', tt2,actv2, 'r') 
+    ax.plot(tt1,actv1, 'b',tt2,actv2, 'r')  #  ax.plot(tt1,actv1, 'b',
+
+    # #ax1.cla() # clear previous frame
+    # ax1.plot(tt1,actv1, 'b')  
+    # #ax2.cla() # clear previous frame
+    # ax2.plot(tt2,actv2, 'r')  
+
+    #plt.tight_layout() # Adjust layout to prevent overlap
     canvas.draw_idle()
 
     root.after(1, updateLinePlot) # after 1ms run updateSpectrogram() without freezing/lag in tkinter
+
+# def plotSpec():
+#     global ind,background2,spec
+
+#     try:
+#        # t1,act1 = dataQ1.get_nowait()
+#         t2,act2,mel2= dataQ2.get_nowait() 
+#     except queue.Empty:
+#          root.after(1,plotSpec)
+#          return
+
+#     #Update spectrogram data 
+#     new_row = mel2  # shape: (16,)
+#     spec = np.roll(spec, -1, axis=0)   # rolls vertically 
+#     spec[-1, :] = new_row   
+
+#     im.set_data(spec)         # update existing image; replace old array without creating new imshow object
+#     ax.draw_artist(im)        # Redraw just the changed artist
+#     fig.canvas.blit(ax.bbox)  # Blit the updated area (blit on screen)
+
+#     root.after(1, plotSpec) 
+
+
+
+
+
 
 
 
@@ -181,6 +248,7 @@ def updateLinePlot():
 threading.Thread(target=getFPV_data1, daemon=True).start()
 threading.Thread(target=getFPV_data2, daemon=True).start()
 updateLinePlot()
+#plotSpec()
 #root.after(5,updateLinePlot)
 root.mainloop()
 
