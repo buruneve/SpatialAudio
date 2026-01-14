@@ -174,7 +174,7 @@ def updateLinePlot():
 
      try:
         # t1,act1 = dataQ1.get_nowait()
-         t2,act2= dataQ2.get_nowait() 
+        t2,act2= dataQ2.get_nowait() 
      except queue.Empty:
 #          #root.after(1,updateLinePlot)
           return
@@ -201,9 +201,11 @@ def updateLinePlot():
 # -------- threads ---------
 threading.Thread(target=sync_time, daemon=True).start()  
 #threading.Thread(target=getFPV_data1, daemon=True).start()
-#threading.Thread(target=getFPV_data2, daemon=True).start()
-getFPV_data2()
-updateLinePlot()
+threading.Thread(target=getFPV_data2, daemon=True).start()
+#getFPV_data2()
+while True:
+    updateLinePlot()
+    time.sleep(0.01)
 #root.mainloop()
 
 
