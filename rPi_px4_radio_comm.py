@@ -183,11 +183,11 @@ def updateLinePlot():
 #     # actv1.append(act1)
 #     # tt1.append(t1)
 
-#     actv2.append(act2)
-#     tt2.append(t2)
+     actv2.append(act2)
+     tt2.append(t2)
 
 #     #print("t1: ",tt1, "act_int1: ", actv1)
-     print("t2: ",tt2, "act_int2: ", actv2)
+     print("t2: ",t2, "act_int2: ", act2)
 
 
     # ax.cla() # clear previous frame
@@ -204,8 +204,8 @@ threading.Thread(target=sync_time, daemon=True).start()
 threading.Thread(target=getFPV_data2, daemon=True).start()
 #getFPV_data2()
 while True:
-    updateLinePlot()
-    time.sleep(0.01)
+	updateLinePlot()
+	time.sleep(0.01)
 #root.mainloop()
 
 
