@@ -28,7 +28,7 @@ de = deque() # add/remove elements from both ends; FIFO and LIFO (last-in, first
 mavutil.set_dialect("development")
 
 # Start a listening connection
-the_connection2 = mavutil.mavlink_connection(device='COM7', baud=57600) #COM6  115200
+the_connection2 = mavutil.mavlink_connection(device='/dev/ttyUSB0', baud=57600) #COM6  115200
 #the_connection1 = mavutil.mavlink_connection(device='COM9', baud=57600)
 
 # # Wait for the first heartbeat
@@ -117,6 +117,7 @@ actv1 = deque(maxlen=max_data)
 actv2 = deque(maxlen=max_data)
 tt1 = deque(maxlen=max_data)
 tt2 = deque(maxlen=max_data)
+
 #------------------------------------------------------------------------------
 # Time synchronization thread
 def sync_time():
@@ -165,19 +166,18 @@ def getFPV_data2():
             act2= msg2.active_intensity 
 
         dataQ2.put((t2,act2)) #mel2
-        print("t2: ",t2, " act_int2: ", act2)
-
+#        print("t2: ",t2, " act_int2: ", act2)
 
                              
-# def updateLinePlot():
-#         # --------------------- line plot ----------------------
+def updateLinePlot():
+# --------------------- line plot ----------------------
 
-#     try:
-#        # t1,act1 = dataQ1.get_nowait()
-#         t2,act2= dataQ2.get_nowait() 
-#     except queue.Empty:
+     try:
+        # t1,act1 = dataQ1.get_nowait()
+         t2,act2= dataQ2.get_nowait() 
+     except queue.Empty:
 #          #root.after(1,updateLinePlot)
-#          return
+          return
 
 
 #     # actv1.append(act1)
@@ -187,7 +187,7 @@ def getFPV_data2():
 #     tt2.append(t2)
 
 #     #print("t1: ",tt1, "act_int1: ", actv1)
-#     print("t2: ",tt2, "act_int2: ", actv2)
+     print("t2: ",tt2, "act_int2: ", actv2)
 
 
     # ax.cla() # clear previous frame
@@ -203,7 +203,7 @@ threading.Thread(target=sync_time, daemon=True).start()
 #threading.Thread(target=getFPV_data1, daemon=True).start()
 #threading.Thread(target=getFPV_data2, daemon=True).start()
 getFPV_data2()
-#updateLinePlot()
+updateLinePlot()
 #root.mainloop()
 
 
