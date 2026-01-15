@@ -19,13 +19,13 @@ de = deque() # add/remove elements from both ends; FIFO and LIFO (last-in, first
 mavutil.set_dialect("development")
 
 # Start a listening connection
-the_connection2 = mavutil.mavlink_connection(device='/dev/ttyUSB0', baud=57600) #COM6  115200
-#the_connection1 = mavutil.mavlink_connection(device='COM9', baud=57600)
+the_connection2 = mavutil.mavlink_connection(device='/dev/ttyUSB0', baud=57600) 
+the_connection1 = mavutil.mavlink_connection(device='/dev/ttyUSB1', baud=57600)
 
 # # Wait for the first heartbeat
 ##  This sets the system and component ID of remote system for the link
-# the_connection1.wait_heartbeat()  
-# print("Heartbeat from system (system %u component %u)" % (the_connection1.target_system, the_connection1.target_component))
+the_connection1.wait_heartbeat()  
+print("Heartbeat from system (system %u component %u)" % (the_connection1.target_system, the_connection1.target_component))
 the_connection2.wait_heartbeat()  
 print("Heartbeat from system (system %u component %u)" % (the_connection2.target_system, the_connection2.target_component))
 
@@ -33,22 +33,22 @@ print("Heartbeat from system (system %u component %u)" % (the_connection2.target
 # sensor_avs message ID
 message_id = 296 #292
 
-# message1 = the_connection1.mav.command_long_encode(   
-#         the_connection1.target_system,  # Target system ID
-#         the_connection1.target_component,  # Target component ID
-#         mavutil.mavlink.MAV_CMD_SET_MESSAGE_INTERVAL,  # ID of command to send  
-#         0,  # Confirmation
-#         message_id,   # param1: Message ID to be streamed
-#         0, # param2: Interval in microseconds
-#         0,0,0,0,0)
-# print(message1)
+message1 = the_connection1.mav.command_long_encode(   
+        the_connection1.target_system,  # Target system ID
+        the_connection1.target_component,  # Target component ID
+        mavutil.mavlink.MAV_CMD_SET_MESSAGE_INTERVAL,  # ID of command to send  
+        0,  # Confirmation
+        message_id,   # param1: Message ID to be streamed
+        0, # param2: Interval in microseconds
+        0,0,0,0,0)
+print(message1)
 
-# # # Send the COMMAND_LONG
-# the_connection1.mav.send(message1)
+# # Send the COMMAND_LONG
+the_connection1.mav.send(message1)
 
-# msg1 = the_connection1.recv_match(type='COMMAND_ACK',blocking=True)  # acknowledge command 
-# print(msg1) 
-# print('')
+msg1 = the_connection1.recv_match(type='COMMAND_ACK',blocking=True)  # acknowledge command 
+print(msg1) 
+print('')
 
 message2 = the_connection2.mav.command_long_encode(   
         the_connection2.target_system,  # Target system ID
@@ -88,26 +88,26 @@ def sync_time():
         # print(readable_time)
 
         # Send to both connections
-        #the_connection1.mav.system_time_send(time_unix_usec, 0)
+        the_connection1.mav.system_time_send(time_unix_usec, 0)
         the_connection2.mav.system_time_send(time_unix_usec, 0)
 
         time.sleep(1.0)  # Send at 1 Hz
 
-# data acquisition thread
-# def getFPV_data1():
+#data acquisition thread
+def getFPV_data1():
     
-#     """thread for connection 1"""
+    """thread for connection 1"""
 
-#     while True:            
-#         msg1 = the_connection1.recv_match(type='SENSOR_AVS_LITE',blocking=True)  
-#         #print(msg1)
+    while True:            
+        msg1 = the_connection1.recv_match(type='SENSOR_AVS_LITE',blocking=True)  
+        #print(msg1)
 
-#         if msg1: 
+        if msg1: 
 
-#             t1 = msg1.time_utc_usec #timestamp 
-#             act1= msg1.active_intensity 
+            t1 = msg1.time_utc_usec #timestamp 
+            act1= msg1.active_intensity 
 
-#         dataQ1.put((t1,act1)) 
+        dataQ1.put((t1,act1)) 
 
 # data acquisition thread
 def getFPV_data2():
@@ -129,27 +129,26 @@ def getFPV_data2():
 def updateLinePlot():
 # --------------------- line plot ----------------------
 
-     try:
-        # t1,act1 = dataQ1.get_nowait()
+    try:
+        t1,act1 = dataQ1.get_nowait()
         t2,act2= dataQ2.get_nowait() 
-     except queue.Empty:
-#          #root.after(1,updateLinePlot)
-          return
+    except queue.Empty:
+        return
 
 
-#     # actv1.append(act1)
-#     # tt1.append(t1)
+    actv1.append(act1)
+    tt1.append(t1)
 
-     actv2.append(act2)
-     tt2.append(t2)
+    actv2.append(act2)
+    tt2.append(t2)
 
-#     #print("t1: ",tt1, "act_int1: ", actv1)
-     print("t2: ",t2, "act_int2: ", act2)
+    print("t1: ",tt1, "act_int1: ", actv1)
+    print("t2: ",t2, "act_int2: ", act2)
 
 
 # -------- threads ---------
 threading.Thread(target=sync_time, daemon=True).start()  
-#threading.Thread(target=getFPV_data1, daemon=True).start()
+threading.Thread(target=getFPV_data1, daemon=True).start()
 threading.Thread(target=getFPV_data2, daemon=True).start()
 
 while True:
