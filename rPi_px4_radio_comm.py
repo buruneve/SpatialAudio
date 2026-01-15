@@ -108,7 +108,8 @@ def getFPV_data1():
             act1= msg1.active_intensity 
 
             print("t1: ",t1, "act_int1: ", act1)
-        dataQ1.put((t1,act1)) 
+        
+        #dataQ1.put((t1,act1)) 
         #print("t1: ",tt1, "act_int1: ", act1)
 
 # data acquisition thread
@@ -125,7 +126,7 @@ def getFPV_data2():
             act2= msg2.active_intensity 
 
             print("t2: ",t2, " act_int2: ", act2)
-        dataQ2.put((t2,act2)) #mel2
+        #dataQ2.put((t2,act2)) #mel2
         #print("t2: ",t2, " act_int2: ", act2)
 
                              
