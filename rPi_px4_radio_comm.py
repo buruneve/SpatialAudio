@@ -108,6 +108,7 @@ def getFPV_data1():
             act1= msg1.active_intensity 
 
         dataQ1.put((t1,act1)) 
+        print("t1: ",tt1, "act_int1: ", act1)
 
 # data acquisition thread
 def getFPV_data2():
@@ -123,34 +124,10 @@ def getFPV_data2():
             act2= msg2.active_intensity 
 
         dataQ2.put((t2,act2)) #mel2
-#        print("t2: ",t2, " act_int2: ", act2)
-
-                             
-def updateLinePlot():
-# --------------------- line plot ----------------------
-
-    try:
-        t1,act1 = dataQ1.get_nowait()
-        t2,act2= dataQ2.get_nowait() 
-    except queue.Empty:
-        return
-
-
-    actv1.append(act1)
-    tt1.append(t1)
-
-    actv2.append(act2)
-    tt2.append(t2)
-
-    print("t1: ",tt1, "act_int1: ", actv1)
-    print("t2: ",t2, "act_int2: ", act2)
-
+        print("t2: ",t2, " act_int2: ", act2)
+        
 
 # -------- threads ---------
 threading.Thread(target=sync_time, daemon=True).start()  
 threading.Thread(target=getFPV_data1, daemon=True).start()
 threading.Thread(target=getFPV_data2, daemon=True).start()
-
-while True:
-	updateLinePlot()
-	time.sleep(0.01)
