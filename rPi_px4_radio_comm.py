@@ -107,8 +107,9 @@ def getFPV_data1():
             t1 = msg1.time_utc_usec #timestamp 
             act1= msg1.active_intensity 
 
+            print("t1: ",tt1, "act_int1: ", act1)
         dataQ1.put((t1,act1)) 
-        print("t1: ",tt1, "act_int1: ", act1)
+        #print("t1: ",tt1, "act_int1: ", act1)
 
 # data acquisition thread
 def getFPV_data2():
@@ -123,11 +124,15 @@ def getFPV_data2():
             t2 = msg2.time_utc_usec #timestamp #timestamp_sample
             act2= msg2.active_intensity 
 
+            print("t2: ",t2, " act_int2: ", act2)
         dataQ2.put((t2,act2)) #mel2
-        print("t2: ",t2, " act_int2: ", act2)
-        
+        #print("t2: ",t2, " act_int2: ", act2)
+
+                             
 
 # -------- threads ---------
 threading.Thread(target=sync_time, daemon=True).start()  
 threading.Thread(target=getFPV_data1, daemon=True).start()
 threading.Thread(target=getFPV_data2, daemon=True).start()
+
+
