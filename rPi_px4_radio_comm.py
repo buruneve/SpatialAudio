@@ -2,16 +2,7 @@
 # communicate with px4: send/receive messages
 
 from pymavlink import mavutil
-# import numpy as np
-#import matplotlib.pyplot as plt
 import time
-#import pandas as pd  # data analysis & manipulation library 
-
-# import tkinter as tk
-# from tkinter import ttk 
-# from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-# import math
-# import matplotlib.image as mpimg 
 import threading
 import queue 
 from collections import deque 
@@ -77,40 +68,6 @@ print(msg2)
 print('')
 
 
-# # -------------------------- Launch the GUI ----------------------------------------
-# root = tk.Tk()
-# #get computers screen dimensions 
-# screen_width = root.winfo_screenwidth()    #print('screen_width:', screen_width )
-# screen_height = root.winfo_screenheight()  #print('screen_height:', screen_height)
-
-# # root window title & set display dimension to fit users screen
-# root.title("GUI")
-# root.geometry(f"{int(screen_width*.7)}" + 'x' + f"{int(screen_height*.6)}")  #width x height+x+y
-
-# # label frame for plots (head and spectrogam) 
-# plot_frame = tk.LabelFrame(root, padx=10, pady=10)
-# plot_frame.pack(side='top', fill="both", expand=True,  padx=10, pady=10)
-# img = mpimg.imread("head_topview.jpg")
-
-# quitButton =  tk.Button(plot_frame, text = 'QUIT', bg ='red', fg= 'black',
-#                                 width=8, height=1, padx=5, pady=5, command= root.quit) #root.destroy
-# quitButton.pack(side="top") 
-
-# # create frame
-# imgFrame = tk.Frame(master=plot_frame) #,padx=10, pady=10)
-# imgFrame.pack(side="left")#grid(row=0, column=2)
-# #create plot with slider value updates 
-
-# fig = plt.figure(figsize=(8,4))
-# ax = fig.add_subplot(111)
-# canvas = FigureCanvasTkAgg(fig, master=imgFrame)
-# canvas.get_tk_widget().pack()
-
-# ax.set_xlabel("Time")
-# ax.set_ylabel("Active intesity")
-
-
-
 # data storage 
 max_data = 100
 actv1 = deque(maxlen=max_data)
@@ -123,7 +80,7 @@ tt2 = deque(maxlen=max_data)
 def sync_time():
     """Send SYSTEM_TIME messages to both flight controllers"""
 
-    while True:
+    while True: 
         # Get current UTC time in microseconds
         time_unix_usec = int(time.time() * 1e6)
         print("system time: ", time_unix_usec)
@@ -190,46 +147,11 @@ def updateLinePlot():
      print("t2: ",t2, "act_int2: ", act2)
 
 
-    # ax.cla() # clear previous frame
-    # ax.plot(tt1,actv1, 'b',tt2,actv2, 'r')  #  ax.plot(tt1,actv1, 'b', ,tt2,actv2, 'r'
-
-    # canvas.draw_idle()
-
-    # root.after(1, updateLinePlot) # after 1ms run updateSpectrogram() without freezing/lag in tkinter
-
-
 # -------- threads ---------
 threading.Thread(target=sync_time, daemon=True).start()  
 #threading.Thread(target=getFPV_data1, daemon=True).start()
 threading.Thread(target=getFPV_data2, daemon=True).start()
-#getFPV_data2()
+
 while True:
 	updateLinePlot()
 	time.sleep(0.01)
-#root.mainloop()
-
-
-
-
-################################################
-################################################
-
-# # run GUI on a separate thread
-# threading.Thread(target=runGUI, daemon=True).start()
-
-# from queue import Queue
-# q = Queue()
-# # The key methods available are:
-# qsize() # - Get the size of the queue
-# empty() # - Check if queue is empty
-# full() # - Check if queue is full
-# put(item) # - Put an item into the queue
-# get() # - Remove and return an item from the queue
-# join() # - Block until all tasks are processed
-
-# ms2=msg2.mel_intensity
-# print("msg2: ", ms2)
-# ts2=datetime.datetime.now()#time.time
-# print("ts2: ",ts2)
-
-
