@@ -107,7 +107,7 @@ def getFPV_data1():
             t1 = msg1.time_utc_usec #timestamp 
             act1= msg1.active_intensity 
 
-            print("t1: ",tt1, "act_int1: ", act1)
+            print("t1: ",t1, "act_int1: ", act1)
         dataQ1.put((t1,act1)) 
         #print("t1: ",tt1, "act_int1: ", act1)
 
