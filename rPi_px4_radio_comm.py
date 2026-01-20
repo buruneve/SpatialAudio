@@ -6,6 +6,8 @@ import time
 import threading
 import queue 
 from collections import deque 
+import csv
+import datetime
 
 
 # queue for data; type of data structure 
@@ -19,8 +21,8 @@ de = deque() # add/remove elements from both ends; FIFO and LIFO (last-in, first
 mavutil.set_dialect("development")
 
 # Start a listening connection
-#the_connection2 = mavutil.mavlink_connection(device='/dev/ttyUSB0', baud=57600) 
-the_connection1 = mavutil.mavlink_connection(device='/dev/ttyUSB1', baud=57600)
+#the_connection2 = mavutil.mavlink_connection(device='/dev/ttyUSB1', baud=57600) 
+the_connection1 = mavutil.mavlink_connection(device='/dev/ttyUSB0', baud=57600)
 
 # # Wait for the first heartbeat
 ##  This sets the system and component ID of remote system for the link
@@ -67,6 +69,20 @@ print('')
 # print(msg2) 
 # print('')
 
+# ------ write to CSV (logging) ------
+
+timestamp_str = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+csvFilename = f"px4_data_{timestamp_str}.csv"
+fieldnames = ['time_utc_usec','active_intensity']
+
+# Open CSV once at start (append mode)
+csv_file = open(csvFilename, mode='a', newline='')
+csv_writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+
+# Write header only if file is empty
+if csv_file.tell() == 0:
+    csv_writer.writeheader()
+
 #------------------------------------------------------------------------------
 # Time synchronization thread
 def sync_time():
@@ -100,6 +116,9 @@ def getFPV_data1():
             act1= msg1.active_intensity 
         
         dataQ1.put((t1,act1)) 
+
+        csv_writer.writerow({'time utc usec': t1,'active intensity': act1})
+        csv_file.flush()  #if programs stopped, will save last few rows
 
 # # data acquisition thread
 # def getFPV_data2():
