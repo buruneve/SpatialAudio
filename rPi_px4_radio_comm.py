@@ -73,7 +73,7 @@ print('')
 
 timestamp_str = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
 csvFilename = f"px4_data_{timestamp_str}.csv"
-fieldnames = ['time_utc_usec','active_intensity']
+fieldnames = ['time_utc_usec1','active_intensity1', 'time_utc_usec2','active_intensity2']
 
 # Open CSV once at start (append mode)
 csv_file = open(csvFilename, mode='a', newline='')
@@ -117,7 +117,7 @@ def getFPV_data1():
         
         dataQ1.put((t1,act1)) 
 
-        csv_writer.writerow({'time_utc_usec': t1,'active_intensity': act1})
+        csv_writer.writerow({'time_utc_usec1': t1,'active_intensity1': act1})
         csv_file.flush()  #if programs stopped, will save last few rows
 
 # # data acquisition thread
@@ -134,6 +134,9 @@ def getFPV_data1():
 #             act2= msg2.active_intensity 
 
 #         dataQ2.put((t2,act2)) 
+
+        # csv_writer.writerow({'time_utc_usec2': t2,'active_intensity2': act2})
+        # csv_file.flush()  #if programs stopped, will save last few rows
 
 
 def updateLinePlot():
