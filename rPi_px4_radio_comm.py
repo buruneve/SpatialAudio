@@ -71,7 +71,7 @@ print('')
 
 # ------ write to CSV (logging) ------
 
-timestamp_str = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+timestamp_str = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
 csvFilename = f"px4_data_{timestamp_str}.csv"
 fieldnames = ['time_utc_usec','active_intensity']
 
@@ -108,7 +108,7 @@ def getFPV_data1():
 
     while True:            
         msg1 = the_connection1.recv_match(type='SENSOR_AVS_LITE',blocking=True)  
-        print(msg1)
+        #print(msg1)
 
         if msg1: 
 
@@ -117,7 +117,7 @@ def getFPV_data1():
         
         dataQ1.put((t1,act1)) 
 
-        csv_writer.writerow({'time utc usec': t1,'active intensity': act1})
+        csv_writer.writerow({'time_utc_usec': t1,'active_intensity': act1})
         csv_file.flush()  #if programs stopped, will save last few rows
 
 # # data acquisition thread
