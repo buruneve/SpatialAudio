@@ -8,6 +8,7 @@ import queue
 from collections import deque 
 import csv
 import datetime
+import sys
 
 
 # queue for data; type of data structure 
@@ -20,60 +21,89 @@ de = deque() # add/remove elements from both ends; FIFO and LIFO (last-in, first
 # set mavlink dialect
 mavutil.set_dialect("development")
 
-# Start a listening connection
-the_connection2 = mavutil.mavlink_connection(device='/dev/ttyUSB1', baud=57600) 
-the_connection1 = mavutil.mavlink_connection(device='/dev/ttyUSB0', baud=57600)
 
-# # Wait for the first heartbeat
-##  This sets the system and component ID of remote system for the link
-the_connection1.wait_heartbeat()  
-print("Heartbeat from system (system %u component %u)" % (the_connection1.target_system, the_connection1.target_component))
-the_connection2.wait_heartbeat()  
-print("Heartbeat from system (system %u component %u)" % (the_connection2.target_system, the_connection2.target_component))
+########################
+# # Start a listening connection
+connection1 = None
+connection2 = None
+#device='/dev/ttyUSB1'
+#device='/dev/ttyUSB0'
 
+# Try Connection 1 (COM7)
+try: 
+    connection1 = mavutil.mavlink_connection(device='/dev/ttyUSB0', baud=57600)
+    connection1.wait_heartbeat(timeout=5)  
+    print("Connection 1: Heartbeat from system (system %u component %u)" % 
+          (connection1.target_system, connection1.target_component))
+except Exception as e:
+    print(f"Connection 1 (COM9) failed: {e}")
+    connection1 = None
 
+# Try Connection 2 (COM9)
+try: 
+    connection2 = mavutil.mavlink_connection(device='/dev/ttyUSB1', baud=57600)
+    connection2.wait_heartbeat(timeout=5)  
+    print("Connection 2: Heartbeat from system (system %u component %u)" % 
+          (connection2.target_system, connection2.target_component))
+except Exception as e:
+    print(f"Connection 2 (COM7) failed: {e}")
+    connection2 = None
+
+# Check if at least one connection succeeded
+if connection1 is None and connection2 is None:
+    print("ERROR: Both connections failed! Exiting...")
+    sys.exit(1)
+
+print(f"\nActive connections: COM7={connection1 is not None}, COM9={connection2 is not None}\n")
+
+############
 # sensor_avs message ID
 message_id = 296 #292
 
-message1 = the_connection1.mav.command_long_encode(   
-        the_connection1.target_system,  # Target system ID
-        the_connection1.target_component,  # Target component ID
-        mavutil.mavlink.MAV_CMD_SET_MESSAGE_INTERVAL,  # ID of command to send  
-        0,  # Confirmation
-        message_id,   # param1: Message ID to be streamed
-        0, # param2: Interval in microseconds
-        0,0,0,0,0)
-print(message1)
+if connection1:
+    print('sent')
 
-# # Send the COMMAND_LONG
-the_connection1.mav.send(message1)
+    message1 = connection1.mav.command_long_encode(   
+            connection1.target_system,  # Target system ID
+            connection1.target_component,  # Target component ID
+            mavutil.mavlink.MAV_CMD_SET_MESSAGE_INTERVAL,  # ID of command to send  
+            0,  # Confirmation
+            message_id,   # param1: Message ID to be streamed
+            0, # param2: Interval in microseconds
+            0,0,0,0,0)
+    print(message1)
 
-msg1 = the_connection1.recv_match(type='COMMAND_ACK',blocking=True)  # acknowledge command 
-print(msg1) 
-print('')
+    # # Send the COMMAND_LONG
+    connection1.mav.send(message1)
 
-message2 = the_connection2.mav.command_long_encode(   
-         the_connection2.target_system,  # Target system ID
-         the_connection2.target_component,  # Target component ID
-         mavutil.mavlink.MAV_CMD_SET_MESSAGE_INTERVAL,  # ID of command to send  
-         0,  # Confirmation
-         message_id,   # param1: Message ID to be streamed
-         0, # param2: Interval in microseconds
-         0,0,0,0,0)
-print(message2)
+    msg1 = connection1.recv_match(type='COMMAND_ACK',blocking=True)  # acknowledge command 
+    print(msg1) 
+    print('')
 
-# # # Send the COMMAND_LONG
-the_connection2.mav.send(message2)
+if connection2:
+    print(' not')
+    message2 = connection2.mav.command_long_encode(   
+            connection2.target_system,  # Target system ID
+            connection2.target_component,  # Target component ID
+            mavutil.mavlink.MAV_CMD_SET_MESSAGE_INTERVAL,  # ID of command to send  
+            0,  # Confirmation
+            message_id,   # param1: Message ID to be streamed
+            0, # param2: Interval in microseconds
+            0,0,0,0,0)
+    print(message2)
 
-msg2 = the_connection2.recv_match(type='COMMAND_ACK',blocking=True)  # acknowledge command 
-print(msg2) 
-# print('')
+    # # Send the COMMAND_LONG
+    connection2.mav.send(message2)
+
+    msg2 = connection2.recv_match(type='COMMAND_ACK',blocking=True)  # acknowledge command 
+    print(msg2) 
+    print('')
 
 # ------ write to CSV (logging) ------
 
 timestamp_str = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
 csvFilename = f"px4_data_{timestamp_str}.csv"
-fieldnames = ['time_utc_usec1','active_intensity1', 'time_utc_usec2','active_intensity2']
+fieldnames = ['node_id','time_utc_usec', 'active_intensity', 'azimuth', 'heading'] #['time_utc_usec','node_id','active_intensity', 'azimuth','heading']
 
 # Open CSV once at start (append mode)
 csv_file = open(csvFilename, mode='a', newline='')
@@ -91,13 +121,16 @@ def sync_time():
     while True: 
         # Get current UTC time in microseconds
         time_unix_usec = int(time.time() * 1e6)
-        print("system time: ", time_unix_usec)
+        #print("system time: ", time_unix_usec)
         # readable_time = datetime.fromtimestamp(time_unix_usec/1e6)
         # print(readable_time)
 
         # Send to both connections
-        the_connection1.mav.system_time_send(time_unix_usec, 0)
-        the_connection2.mav.system_time_send(time_unix_usec, 0)
+        if connection1:
+            connection1.mav.system_time_send(time_unix_usec, 0)
+
+        if connection2:
+            connection2.mav.system_time_send(time_unix_usec, 0)
 
         time.sleep(1.0)  # Send at 1 Hz
 
@@ -105,57 +138,77 @@ def sync_time():
 def getFPV_data1():
     
     """thread for connection 1"""
+    
+    if not connection1:
+        return
+    
 
     while True:            
-        msg1 = the_connection1.recv_match(type='SENSOR_AVS_LITE',blocking=True)  
-        #print(msg1)
+        #msg = connection1.recv_match(type ='LOCAL_POSITION_NED',blocking=True)  #x,y,z (n,e,d)
+        msg1 = connection1.recv_match(type='SENSOR_AVS_LITE',blocking=True)       
 
         if msg1: 
-
+            #active_intensity = the_connection.messages['SENSOR_AVS'].active_intensity
             t1 = msg1.time_utc_usec #timestamp 
+            id1 = msg1.device_id
             act1= msg1.active_intensity 
+            az1 = msg1.azimuth_deg
         
-        dataQ1.put((t1,act1)) 
+        dataQ1.put((t1,id1,act1,az1)) 
 
-        csv_writer.writerow({'time_utc_usec1': t1,'active_intensity1': act1})
+        csv_writer.writerow({'node_id': id1,'time_utc_usec': t1,'active_intensity': act1, 'azimuth': az1})
         csv_file.flush()  #if programs stopped, will save last few rows
 
-# # data acquisition thread
+# data acquisition thread
 def getFPV_data2():
     
-#     """thread for connection 2"""
+    """thread for connection 2"""
+        
+    if not connection2:
+        return
 
-     while True: 
-         msg2 = the_connection2.recv_match(type = 'SENSOR_AVS_LITE',blocking=True) #type='SENSOR_AVS', 
+    while True: 
+        msg2 = connection2.recv_match(type = 'SENSOR_AVS_LITE',blocking=True) #type='SENSOR_AVS', 
 
-         if msg2:
+        if msg2:
             
-             t2 = msg2.time_utc_usec #timestamp #timestamp_sample
-             act2= msg2.active_intensity 
+            t2 = msg2.time_utc_usec #timestamp #timestamp_sample
+            id2 = msg2.device_id
+            act2= msg2.active_intensity 
+            az2 = msg2.azimuth_deg
 
-         dataQ2.put((t2,act2)) 
+        dataQ2.put((t2,id2,act2, az2)) 
 
-         csv_writer.writerow({'time_utc_usec2': t2,'active_intensity2': act2})
-         csv_file.flush()  #if programs stopped, will save last few rows
+        csv_writer.writerow({'node_id': id2,'time_utc_usec': t2,'active_intensity': act2, 'azimuth': az2})
+        csv_file.flush()  #if programs stopped, will save last few rows
 
 
 def updateLinePlot():
         # --------------------- line plot ----------------------
-
-    try:
-        t1,act1 = dataQ1.get_nowait()
-        t2,act2= dataQ2.get_nowait() 
-    except queue.Empty:
-         return
+    # Get data from queue 1 if available
+    if connection1:
+        try:
+            t1, id1, act1, az1 = dataQ1.get_nowait()
+            print("t1:", t1, " id1:", id1, " act_int1:", act1, " az1:", az1)
+        except queue.Empty:
+            pass  
     
-    print("t1: ",t1, "act_int1: ", act1)
-    print("t2: ",t2, "act_int2: ", act2)
+    # Get data from queue 2 if available
+    if connection2:
+        try:
+            t2, id2, act2, az2 = dataQ2.get_nowait()
+            print("t2:", t2, " id2:", id2, " act_int2:", act2, " az2:", az2)
+        except queue.Empty:
+            pass  
                                 
 
 # -------- threads ---------
-threading.Thread(target=sync_time, daemon=True).start()  
-threading.Thread(target=getFPV_data1, daemon=True).start()
-threading.Thread(target=getFPV_data2, daemon=True).start()
+#if connection1 or connection2:
+threading.Thread(target=sync_time, daemon=True).start() 
+if connection1: 
+    threading.Thread(target=getFPV_data1, daemon=True).start()
+if connection2:
+    threading.Thread(target=getFPV_data2, daemon=True).start()
 
 while True:
     updateLinePlot()

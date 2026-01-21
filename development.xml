@@ -733,6 +733,7 @@
       <wip/>
       <!-- This message is work-in-progress. -->
       <description>acoustic vector sensor light version </description>
+      <field type="uint32_t" name="device_id">unique device ID for the sensor that does not change between power cycles</field>
       <field type="uint64_t" name="time_utc_usec">Timestamp (microseconds, UTC)</field>
       <field type="uint64_t" name="timestamp">time since system start (microseconds)</field>
       <field type="uint32_t" name="timestamp_sample">AVS sensor sample index since system SYNC</field>
