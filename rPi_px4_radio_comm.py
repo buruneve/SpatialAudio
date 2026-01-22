@@ -120,7 +120,7 @@ def sync_time():
 
     while True: 
         # Get current UTC time in microseconds
-        time_unix_usec = int(time.time() * 1e6)
+        time_unix_usec =  int(datetime.datetime.now().timestamp() * 1e6) #int(time.time() * 1e6)
         #print("system time: ", time_unix_usec)
         # readable_time = datetime.fromtimestamp(time_unix_usec/1e6)
         # print(readable_time)
