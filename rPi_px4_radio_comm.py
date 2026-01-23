@@ -9,7 +9,10 @@ from collections import deque
 import csv
 import datetime
 import sys
+import os
 
+# sz = Path('Data.csv').stat().st_size
+# print(sz)
 
 # queue for data; type of data structure 
 dataQ1 = queue.Queue() # FIFO: first-in, first-out 
@@ -20,7 +23,6 @@ de = deque() # add/remove elements from both ends; FIFO and LIFO (last-in, first
 
 # set mavlink dialect
 mavutil.set_dialect("development")
-
 
 ########################
 # # Start a listening connection
@@ -61,8 +63,6 @@ print(f"\nActive connections: COM7={connection1 is not None}, COM9={connection2 
 message_id = 296 #292
 
 if connection1:
-    print('sent')
-
     message1 = connection1.mav.command_long_encode(   
             connection1.target_system,  # Target system ID
             connection1.target_component,  # Target component ID
@@ -81,7 +81,6 @@ if connection1:
     print('')
 
 if connection2:
-    print(' not')
     message2 = connection2.mav.command_long_encode(   
             connection2.target_system,  # Target system ID
             connection2.target_component,  # Target component ID
@@ -99,28 +98,59 @@ if connection2:
     print(msg2) 
     print('')
 
+# create directory to store logging data
+# Specify the directory name
+dirName = 'sensor_avs_logging_data'
+
+# Create the directory
+try:
+    os.mkdir(dirName)
+    print(f"Directory '{dirName}' created successfully.")
+except FileExistsError:
+    print(f"Directory '{dirName}' already exists.")
+
 # ------ write to CSV (logging) ------
 
+fieldnames = ['node_id','time_utc_usec', 'active_intensity', 'azimuth']
 timestamp_str = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-csvFilename = f"px4_data_{timestamp_str}.csv"
-fieldnames = ['node_id','time_utc_usec', 'active_intensity', 'azimuth', 'heading'] #['time_utc_usec','node_id','active_intensity', 'azimuth','heading']
+csv_file_name = f"{timestamp_str}.csv"
+
+# Check if file exists
+# file_exists = os.path.isfile(csv_file_name)
+# print(file_exists)
+
+# if file_exists:
+#     count = 1
+#     csv_file_name =f"sensor_avs_data_{count}.csv"
+#     count += 1
 
 # Open CSV once at start (append mode)
-csv_file = open(csvFilename, mode='a', newline='')
+csv_file = open(os.path.join(dirName,csv_file_name), mode='a', newline='')
+csv_writer = csv.writer(csv_file)
 csv_writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
 
 # Write header only if file is empty
 if csv_file.tell() == 0:
     csv_writer.writeheader()
 
+def set_timer():
+    # Record start time for 1-minute timer
+    start_timer = time.time()
+    end_timer = start_timer + 10  # 1 minute from now
+
+    print(f"Collecting data for 1 hour...")
+    print(f"Data collection start time: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(start_timer))}")
+
+    return end_timer
+
 #------------------------------------------------------------------------------
 # Time synchronization thread
-def sync_time():
+def sync_time(end_timer):
     """Send SYSTEM_TIME messages to both flight controllers"""
 
-    while True: 
+    while time.time() < end_timer: 
         # Get current UTC time in microseconds
-        time_unix_usec =  int(datetime.datetime.now().timestamp() * 1e6) #int(time.time() * 1e6)
+        time_unix_usec =  int(time.time() * 1e6)
         #print("system time: ", time_unix_usec)
         # readable_time = datetime.fromtimestamp(time_unix_usec/1e6)
         # print(readable_time)
@@ -134,16 +164,16 @@ def sync_time():
 
         time.sleep(1.0)  # Send at 1 Hz
 
+
 #data acquisition thread
-def getFPV_data1():
+def getFPV_data1(end_timer):
     
     """thread for connection 1"""
     
     if not connection1:
         return
     
-
-    while True:            
+    while  time.time() < end_timer: #True:            
         #msg = connection1.recv_match(type ='LOCAL_POSITION_NED',blocking=True)  #x,y,z (n,e,d)
         msg1 = connection1.recv_match(type='SENSOR_AVS_LITE',blocking=True)       
 
@@ -154,20 +184,24 @@ def getFPV_data1():
             act1= msg1.active_intensity 
             az1 = msg1.azimuth_deg
         
-        dataQ1.put((t1,id1,act1,az1)) 
+        dataQ1.put((t1,id1,act1,az1))
 
         csv_writer.writerow({'node_id': id1,'time_utc_usec': t1,'active_intensity': act1, 'azimuth': az1})
         csv_file.flush()  #if programs stopped, will save last few rows
 
+    else:
+        csv_file.close()
+
+
 # data acquisition thread
-def getFPV_data2():
+def getFPV_data2(end_timer):
     
     """thread for connection 2"""
         
     if not connection2:
         return
 
-    while True: 
+    while  time.time() < end_timer:
         msg2 = connection2.recv_match(type = 'SENSOR_AVS_LITE',blocking=True) #type='SENSOR_AVS', 
 
         if msg2:
@@ -181,6 +215,9 @@ def getFPV_data2():
 
         csv_writer.writerow({'node_id': id2,'time_utc_usec': t2,'active_intensity': act2, 'azimuth': az2})
         csv_file.flush()  #if programs stopped, will save last few rows
+
+    else:
+        csv_file.close()
 
 
 def updateLinePlot():
@@ -204,13 +241,14 @@ def updateLinePlot():
 
 # -------- threads ---------
 #if connection1 or connection2:
-threading.Thread(target=sync_time, daemon=True).start() 
+end_timer = set_timer()
+threading.Thread(target=sync_time,args=(end_timer,), daemon=True).start() 
 if connection1: 
-    threading.Thread(target=getFPV_data1, daemon=True).start()
+    threading.Thread(target=getFPV_data1,args=(end_timer,), daemon=True).start()
 if connection2:
-    threading.Thread(target=getFPV_data2, daemon=True).start()
+    threading.Thread(target=getFPV_data2,args=(end_timer,), daemon=True).start()
 
-while True:
+while time.time() < end_timer: #True:
     updateLinePlot()
     time.sleep(0.01)
 
