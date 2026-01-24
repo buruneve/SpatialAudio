@@ -33,7 +33,7 @@ connection2 = None
 
 # Try Connection 1 (COM7)
 try: 
-    connection1 = mavutil.mavlink_connection(device='/dev/ttyUSB0', baud=57600)
+    connection1 = mavutil.mavlink_connection('/dev/ttyUSB0', baud=57600)
     connection1.wait_heartbeat(timeout=5)  
     print("Connection 1: Heartbeat from system (system %u component %u)" % 
           (connection1.target_system, connection1.target_component))
@@ -111,7 +111,7 @@ except FileExistsError:
 
 # ------ write to CSV (logging) ------
 
-fieldnames = ['node_id','time_utc_usec', 'active_intensity', 'azimuth']
+fieldnames = ['node_id','time_utc_usec', 'active_intensity', 'azimuth', 'heading', 'north', 'east', 'down']
 timestamp_str = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
 csv_file_name = f"{timestamp_str}.csv"
 
@@ -131,7 +131,7 @@ csv_writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
 
 # Write header only if file is empty
 if csv_file.tell() == 0:
-    csv_writer.writeheader()
+    csv_writer.writeheader()  
 
 def set_timer():
     # Record start time for 1-minute timer
@@ -175,18 +175,41 @@ def getFPV_data1(end_timer):
     
     while  time.time() < end_timer: #True:            
         #msg = connection1.recv_match(type ='LOCAL_POSITION_NED',blocking=True)  #x,y,z (n,e,d)
-        msg1 = connection1.recv_match(type='SENSOR_AVS_LITE',blocking=True)       
-
+        #msg1 = connection1.recv_match(type='SENSOR_AVS_LITE',blocking=True)    
+        msg1 = connection1.recv_match(type=['SENSOR_AVS_LITE', 'ATTITUDE', 'LOCAL_POSITION_NED'], 
+                                      blocking=True)       
+        print(msg1)
         if msg1: 
-            #active_intensity = the_connection.messages['SENSOR_AVS'].active_intensity
-            t1 = msg1.time_utc_usec #timestamp 
-            id1 = msg1.device_id
-            act1= msg1.active_intensity 
-            az1 = msg1.azimuth_deg
-        
-        dataQ1.put((t1,id1,act1,az1))
+         
+            t1 = connection1.messages['SENSOR_AVS_LITE'].time_utc_usec
+            id1 = connection1.messages['SENSOR_AVS_LITE'].device_id
+            act1= connection1.messages['SENSOR_AVS_LITE'].active_intensity 
+            az1 = connection1.messages['SENSOR_AVS_LITE'].azimuth_deg
 
-        csv_writer.writerow({'node_id': id1,'time_utc_usec': t1,'active_intensity': act1, 'azimuth': az1})
+            yaw1 = connection1.messages['ATTITUDE'].yaw   
+            # pitch1 = connection1.messages['ATTITUDE'].pitch                                      
+            # roll1 = connection1.messages['ATTITUDE'].roll 
+
+            north1 = connection1.messages['LOCAL_POSITION_NED'].x  # N
+            east1 = connection1.messages['LOCAL_POSITION_NED'].y  # E
+            down1 = connection1.messages['LOCAL_POSITION_NED'].z  # -D 
+
+            # yaw1 = msg1.yaw   
+            # # pitch1 = msg1.pitch                                      
+            # # roll1 = msg1.roll 
+
+            # north1 = msg1.x  # N
+            # east1 = msg1.y  # E
+            # down1 = msg1.z  # -D 
+            
+            # t1 = msg1.time_utc_usec #timestamp 
+            # id1 = msg1.device_id
+            # act1= msg1.active_intensity 
+            # az1 = msg1.azimuth_deg
+        
+        dataQ1.put((t1,id1,act1,az1,yaw1,north1,east1,down1))
+
+        csv_writer.writerow({'node_id': id1,'time_utc_usec': t1,'active_intensity': act1, 'azimuth': az1, 'heading': yaw1, 'north': north1, 'east': east1,'down': down1})
         csv_file.flush()  #if programs stopped, will save last few rows
 
     else:
@@ -202,18 +225,40 @@ def getFPV_data2(end_timer):
         return
 
     while  time.time() < end_timer:
-        msg2 = connection2.recv_match(type = 'SENSOR_AVS_LITE',blocking=True) #type='SENSOR_AVS', 
+        msg2 = connection2.recv_match(type=['SENSOR_AVS_LITE', 'ATTITUDE', 'LOCAL_POSITION_NED'], 
+                                      blocking=True)
 
         if msg2:
             
-            t2 = msg2.time_utc_usec #timestamp #timestamp_sample
-            id2 = msg2.device_id
-            act2= msg2.active_intensity 
-            az2 = msg2.azimuth_deg
+            t2 = connection2.messages['SENSOR_AVS_LITE'].time_utc_usec
+            id2 = connection2.messages['SENSOR_AVS_LITE'].device_id
+            act2= connection2.messages['SENSOR_AVS_LITE'].active_intensity 
+            az2 = connection2.messages['SENSOR_AVS_LITE'].azimuth_deg
 
-        dataQ2.put((t2,id2,act2, az2)) 
+            yaw2 = connection2.messages['ATTITUDE'].yaw   
+            # pitch1 = connection1.messages['ATTITUDE'].pitch                                      
+            # roll1 = connection1.messages['ATTITUDE'].roll 
 
-        csv_writer.writerow({'node_id': id2,'time_utc_usec': t2,'active_intensity': act2, 'azimuth': az2})
+            north2 = connection2.messages['LOCAL_POSITION_NED'].x  # N
+            east2 = connection2.messages['LOCAL_POSITION_NED'].y  # E
+            down2 = connection2.messages['LOCAL_POSITION_NED'].z  # -D 
+
+            # yaw2 = msg2.yaw   
+            # # pitch1 = msg2.pitch                                      
+            # # roll1 = msg2.roll 
+
+            # north2 = msg2.x  # N
+            # east2 = msg2.y  # E
+            # down2 = msg2.z  # -D 
+
+            # t2 = msg2.time_utc_usec #timestamp #timestamp_sample
+            # id2 = msg2.device_id
+            # act2= msg2.active_intensity 
+            # az2 = msg2.azimuth_deg
+
+        dataQ2.put((t2,id2,act2, az2, yaw2,north2,east2,down2)) 
+
+        csv_writer.writerow({'node_id': id2,'time_utc_usec': t2,'active_intensity': act2, 'azimuth': az2, 'heading': yaw2, 'north': north2, 'east': east2,'down': down2})
         csv_file.flush()  #if programs stopped, will save last few rows
 
     else:
@@ -225,16 +270,16 @@ def updateLinePlot():
     # Get data from queue 1 if available
     if connection1:
         try:
-            t1, id1, act1, az1 = dataQ1.get_nowait()
-            print("t1:", t1, " id1:", id1, " act_int1:", act1, " az1:", az1)
+            t1, id1, act1, az1, yaw1, north1, east1, down1 = dataQ1.get_nowait()
+            print("t1:", t1, " id1:", id1, " act_int1:", act1, " az1:", az1, 'heading:', yaw1, 'north:', north1, 'east:', east1,'down:', down1)
         except queue.Empty:
             pass  
     
     # Get data from queue 2 if available
     if connection2:
         try:
-            t2, id2, act2, az2 = dataQ2.get_nowait()
-            print("t2:", t2, " id2:", id2, " act_int2:", act2, " az2:", az2)
+            t2, id2, act2, az2, yaw2, north2, east2, down2 = dataQ2.get_nowait()
+            print("t2:", t2, " id2:", id2, " act_int2:", act2, " az2:", az2, 'heading:', yaw2, 'north:', north2, 'east:', east2,'down:', down2)
         except queue.Empty:
             pass  
                                 
