@@ -743,5 +743,25 @@
       <field type="float" name="q_factor">Q-factor of the histogram peak for this detected source</field>
       <field type="uint16_t" name="histogram_count">number of hits for this azim/elev histogram bin</field>
     </message>
+    <message id="297" name="SENSOR_AVS_LITE_EXT">
+      <wip/>
+      <!-- This message is work-in-progress. -->
+      <description>acoustic vector sensor light version </description>
+      <field type="uint32_t" name="device_id">unique device ID for the sensor that does not change between power cycles</field>
+      <field type="uint64_t" name="time_utc_usec">Timestamp (microseconds, UTC)</field>
+      <field type="uint64_t" name="timestamp">time since system start (microseconds)</field>
+      <field type="uint32_t" name="timestamp_sample">AVS sensor sample index since system SYNC</field>
+      <field type="float" name="azimuth_deg">azimuth in degrees</field>
+      <field type="float" name="elevation_deg">elevation in degrees</field>
+      <field type="float" name="active_intensity">active intensity level re: 1 pW</field>
+      <field type="float" name="q_factor">Q-factor of the histogram peak for this detected source</field>
+      <field type="uint16_t" name="histogram_count">number of hits for this azim/elev histogram bin</field>
+      <field type="float" name="north"> local north coordinate </field>
+      <field type="float" name="east"> local east coordinate</field>
+      <field type="float" name="down"> local down coordinate</field>
+      <field type="float" name="yaw"> yaw</field>
+      <field type="float" name="pitch"> pitch</field>
+      <field type="float" name="roll"> roll</field>
+    </message>
   </messages>
 </mavlink>

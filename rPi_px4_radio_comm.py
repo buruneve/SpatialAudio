@@ -11,8 +11,17 @@ import datetime
 import sys
 import os
 
-# sz = Path('Data.csv').stat().st_size
-# print(sz)
+import serial.tools.list_ports
+
+### check comm port availability 
+
+# List all available COM ports
+ports = serial.tools.list_ports.comports()
+
+deviceList = []
+for port in ports:
+    #print(f"Device: {port.device}")
+    deviceList.append(port.device)
 
 # queue for data; type of data structure 
 dataQ1 = queue.Queue() # FIFO: first-in, first-out 
@@ -24,43 +33,70 @@ de = deque() # add/remove elements from both ends; FIFO and LIFO (last-in, first
 # set mavlink dialect
 mavutil.set_dialect("development")
 
+# CSV write lock for thread safety
+csv_lock = threading.Lock()
+
 ########################
 # # Start a listening connection
 connection1 = None
 connection2 = None
-#device='/dev/ttyUSB1'
-#device='/dev/ttyUSB0'
 
-# Try Connection 1 (COM7)
-try: 
-    connection1 = mavutil.mavlink_connection('/dev/ttyUSB0', baud=57600)
-    connection1.wait_heartbeat(timeout=5)  
-    print("Connection 1: Heartbeat from system (system %u component %u)" % 
-          (connection1.target_system, connection1.target_component))
-except Exception as e:
-    print(f"Connection 1 (COM9) failed: {e}")
-    connection1 = None
+# loop through available devices
+# for dev in deviceList: 
 
-# Try Connection 2 (COM9)
-try: 
-    connection2 = mavutil.mavlink_connection(device='/dev/ttyUSB1', baud=57600)
-    connection2.wait_heartbeat(timeout=5)  
-    print("Connection 2: Heartbeat from system (system %u component %u)" % 
-          (connection2.target_system, connection2.target_component))
-except Exception as e:
-    print(f"Connection 2 (COM7) failed: {e}")
-    connection2 = None
+if len(deviceList) == 2:
+    #try both connections
 
-# Check if at least one connection succeeded
-if connection1 is None and connection2 is None:
-    print("ERROR: Both connections failed! Exiting...")
-    sys.exit(1)
+    # Try Connection 1
+    try: 
+        connection1 = mavutil.mavlink_connection(device=deviceList[0], baud=57600)
+        connection1.wait_heartbeat(timeout=5)  
+        print("Connection 1: Heartbeat from system (system %u component %u)" % 
+            (connection1.target_system, connection1.target_component))
+    except Exception as e:
+        print(f"Connection 1 {deviceList[0]} failed: {e}")
+        connection1 = None
 
-print(f"\nActive connections: COM7={connection1 is not None}, COM9={connection2 is not None}\n")
+    # Try Connection 2 
+    try: 
+        connection2 = mavutil.mavlink_connection(device=deviceList[1], baud=57600)
+        connection2.wait_heartbeat(timeout=5)  
+        print("Connection 2: Heartbeat from system (system %u component %u)" % 
+            (connection2.target_system, connection2.target_component))
+    except Exception as e:
+        print(f"Connection 2 {deviceList[1]} failed: {e}")
+        connection2 = None
+
+    # Check if at least one connection succeeded
+    if connection1 is None and connection2 is None:
+        print("ERROR: Both connections failed! Exiting...")
+        sys.exit(1)
+
+    print(f"\nActive connections: {deviceList[0]} = {connection1 is not None}, {deviceList[1]} = {connection2 is not None}\n")
+
+elif len(deviceList) == 1:
+    # try if only one connection available 
+
+    # Try Connection 1
+    try: 
+        connection1 = mavutil.mavlink_connection(device=deviceList[0], baud=57600)
+        connection1.wait_heartbeat(timeout=5)  
+        print("Connection 1: Heartbeat from system (system %u component %u)" % 
+            (connection1.target_system, connection1.target_component))
+    except Exception as e:
+        print(f"Connection 1 {deviceList[0]} failed: {e}")
+        connection1 = None
+
+    print(f"\nActive connections: {deviceList[0]}={connection1 is not None}\n")
+
+else: 
+    print('ERROR: No avaialble connections. Check if usbs are plugged in. Exiting...')
+    sys.exit(1)        
+
 
 ############
 # sensor_avs message ID
-message_id = 296 #292
+message_id = 297 #292
 
 if connection1:
     message1 = connection1.mav.command_long_encode(   
@@ -76,8 +112,8 @@ if connection1:
     # # Send the COMMAND_LONG
     connection1.mav.send(message1)
 
-    msg1 = connection1.recv_match(type='COMMAND_ACK',blocking=True)  # acknowledge command 
-    print(msg1) 
+    msg = connection1.recv_match(type='COMMAND_ACK',blocking=True)  # acknowledge command 
+    print(msg) 
     print('')
 
 if connection2:
@@ -94,12 +130,11 @@ if connection2:
     # # Send the COMMAND_LONG
     connection2.mav.send(message2)
 
-    msg2 = connection2.recv_match(type='COMMAND_ACK',blocking=True)  # acknowledge command 
-    print(msg2) 
+    msg = connection2.recv_match(type='COMMAND_ACK',blocking=True)  # acknowledge command 
+    print(msg) 
     print('')
 
 # create directory to store logging data
-# Specify the directory name
 dirName = 'sensor_avs_logging_data'
 
 # Create the directory
@@ -111,18 +146,9 @@ except FileExistsError:
 
 # ------ write to CSV (logging) ------
 
-fieldnames = ['node_id','time_utc_usec', 'active_intensity', 'azimuth', 'heading', 'north', 'east', 'down']
+fieldnames = ['node_id','time_utc_usec', 'active_intensity', 'azimuth', 'elevation', 'heading', 'north', 'east', 'down']
 timestamp_str = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
 csv_file_name = f"{timestamp_str}.csv"
-
-# Check if file exists
-# file_exists = os.path.isfile(csv_file_name)
-# print(file_exists)
-
-# if file_exists:
-#     count = 1
-#     csv_file_name =f"sensor_avs_data_{count}.csv"
-#     count += 1
 
 # Open CSV once at start (append mode)
 csv_file = open(os.path.join(dirName,csv_file_name), mode='a', newline='')
@@ -173,44 +199,34 @@ def getFPV_data1(end_timer):
     if not connection1:
         return
     
-    while  time.time() < end_timer: #True:            
-        #msg = connection1.recv_match(type ='LOCAL_POSITION_NED',blocking=True)  #x,y,z (n,e,d)
-        #msg1 = connection1.recv_match(type='SENSOR_AVS_LITE',blocking=True)    
-        msg1 = connection1.recv_match(type=['SENSOR_AVS_LITE', 'ATTITUDE', 'LOCAL_POSITION_NED'], 
-                                      blocking=True)       
-        print(msg1)
-        if msg1: 
-         
-            t1 = connection1.messages['SENSOR_AVS_LITE'].time_utc_usec
-            id1 = connection1.messages['SENSOR_AVS_LITE'].device_id
-            act1= connection1.messages['SENSOR_AVS_LITE'].active_intensity 
-            az1 = connection1.messages['SENSOR_AVS_LITE'].azimuth_deg
+    while  time.time() < end_timer: #True:        
+        # recv_match returns one mavlink message  
+        # returns only the next message that arrives; one msg type per call 
+        # Different message types arrive at different frequencies
+          
+        msg = connection1.recv_match(type='SENSOR_AVS_LITE_EXT', blocking=True)       #,timeout=1.0
 
-            yaw1 = connection1.messages['ATTITUDE'].yaw   
-            # pitch1 = connection1.messages['ATTITUDE'].pitch                                      
-            # roll1 = connection1.messages['ATTITUDE'].roll 
+        #check msg 
+        if msg: 
+            t = msg.time_utc_usec
+            id = msg.device_id
+            act = msg.active_intensity
+            az = msg.azimuth_deg
+            el = msg.elevation_deg
 
-            north1 = connection1.messages['LOCAL_POSITION_NED'].x  # N
-            east1 = connection1.messages['LOCAL_POSITION_NED'].y  # E
-            down1 = connection1.messages['LOCAL_POSITION_NED'].z  # -D 
+            yaw = msg.yaw
+            north = msg.north
+            east = msg.east
+            down = msg.down
 
-            # yaw1 = msg1.yaw   
-            # # pitch1 = msg1.pitch                                      
-            # # roll1 = msg1.roll 
-
-            # north1 = msg1.x  # N
-            # east1 = msg1.y  # E
-            # down1 = msg1.z  # -D 
+        dataQ1.put((t,id,act,az,el,yaw,north,east,down))
             
-            # t1 = msg1.time_utc_usec #timestamp 
-            # id1 = msg1.device_id
-            # act1= msg1.active_intensity 
-            # az1 = msg1.azimuth_deg
-        
-        dataQ1.put((t1,id1,act1,az1,yaw1,north1,east1,down1))
 
-        csv_writer.writerow({'node_id': id1,'time_utc_usec': t1,'active_intensity': act1, 'azimuth': az1, 'heading': yaw1, 'north': north1, 'east': east1,'down': down1})
-        csv_file.flush()  #if programs stopped, will save last few rows
+        #  Thread-safe CSV write
+        #  automatically acquires and releases a lock 
+        with csv_lock:
+            csv_writer.writerow({'node_id': id,'time_utc_usec': t,'active_intensity': act, 'azimuth': az, 'elevation': el, 'heading': yaw, 'north': north, 'east': east,'down': down})
+            csv_file.flush()  #if programs stopped, will save last few rows
 
     else:
         csv_file.close()
@@ -225,61 +241,52 @@ def getFPV_data2(end_timer):
         return
 
     while  time.time() < end_timer:
-        msg2 = connection2.recv_match(type=['SENSOR_AVS_LITE', 'ATTITUDE', 'LOCAL_POSITION_NED'], 
-                                      blocking=True)
+        msg = connection2.recv_match(type='SENSOR_AVS_LITE_EXT', blocking=True)
 
-        if msg2:
-            
-            t2 = connection2.messages['SENSOR_AVS_LITE'].time_utc_usec
-            id2 = connection2.messages['SENSOR_AVS_LITE'].device_id
-            act2= connection2.messages['SENSOR_AVS_LITE'].active_intensity 
-            az2 = connection2.messages['SENSOR_AVS_LITE'].azimuth_deg
+        if msg:
+            # connection.messages is a dictionary that stores the LAST received message of each type (Which is an issue)
+            # potentially storing old data in csv
 
-            yaw2 = connection2.messages['ATTITUDE'].yaw   
-            # pitch1 = connection1.messages['ATTITUDE'].pitch                                      
-            # roll1 = connection1.messages['ATTITUDE'].roll 
+            yaw = msg.yaw   
+            # pitch1 = msg.pitch                                      
+            # roll1 = msg.roll 
 
-            north2 = connection2.messages['LOCAL_POSITION_NED'].x  # N
-            east2 = connection2.messages['LOCAL_POSITION_NED'].y  # E
-            down2 = connection2.messages['LOCAL_POSITION_NED'].z  # -D 
+            north = msg.north  # N
+            east = msg.east  # E
+            down = msg.down  # -D 
 
-            # yaw2 = msg2.yaw   
-            # # pitch1 = msg2.pitch                                      
-            # # roll1 = msg2.roll 
+            t = msg.time_utc_usec #timestamp #timestamp_sample
+            id = msg.device_id
+            act= msg.active_intensity 
+            az = msg.azimuth_deg
+            el = msg.elevation_deg
 
-            # north2 = msg2.x  # N
-            # east2 = msg2.y  # E
-            # down2 = msg2.z  # -D 
+        dataQ2.put((t,id,act,az,el,yaw,north,east,down))
 
-            # t2 = msg2.time_utc_usec #timestamp #timestamp_sample
-            # id2 = msg2.device_id
-            # act2= msg2.active_intensity 
-            # az2 = msg2.azimuth_deg
-
-        dataQ2.put((t2,id2,act2, az2, yaw2,north2,east2,down2)) 
-
-        csv_writer.writerow({'node_id': id2,'time_utc_usec': t2,'active_intensity': act2, 'azimuth': az2, 'heading': yaw2, 'north': north2, 'east': east2,'down': down2})
-        csv_file.flush()  #if programs stopped, will save last few rows
+        # Thread-safe CSV write
+        with csv_lock:
+            csv_writer.writerow({'node_id': id,'time_utc_usec': t,'active_intensity': act, 'azimuth': az, 'elevation': el, 'heading': yaw, 'north': north, 'east': east,'down': down})
+            csv_file.flush()  #if programs stopped, will save last few rows`
 
     else:
         csv_file.close()
 
 
-def updateLinePlot():
-        # --------------------- line plot ----------------------
+def printData():
+        # ---------print data  ----------------------
     # Get data from queue 1 if available
     if connection1:
         try:
-            t1, id1, act1, az1, yaw1, north1, east1, down1 = dataQ1.get_nowait()
-            print("t1:", t1, " id1:", id1, " act_int1:", act1, " az1:", az1, 'heading:', yaw1, 'north:', north1, 'east:', east1,'down:', down1)
+            t, id, act, az,el, yaw, north, east, down = dataQ1.get_nowait()
+            print("t:", t, " id:", id, " act_int:", act, " az:", az, " elevation:",el, ' heading:', yaw, ' north:', north, ' east:', east,' down:', down)
         except queue.Empty:
             pass  
     
     # Get data from queue 2 if available
     if connection2:
         try:
-            t2, id2, act2, az2, yaw2, north2, east2, down2 = dataQ2.get_nowait()
-            print("t2:", t2, " id2:", id2, " act_int2:", act2, " az2:", az2, 'heading:', yaw2, 'north:', north2, 'east:', east2,'down:', down2)
+            t, id, act, az, el,yaw, north, east, down = dataQ2.get_nowait()
+            print("t:", t, " id:", id, " act_int:", act, " az:", az,  " elevation:",el, ' heading:', yaw, ' north:', north, ' east:', east,' down:', down)
         except queue.Empty:
             pass  
                                 
@@ -294,6 +301,5 @@ if connection2:
     threading.Thread(target=getFPV_data2,args=(end_timer,), daemon=True).start()
 
 while time.time() < end_timer: #True:
-    updateLinePlot()
+    printData()
     time.sleep(0.01)
-
