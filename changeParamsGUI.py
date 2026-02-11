@@ -5,7 +5,8 @@ import tkinter as tk
 import struct
 
 import serial.tools.list_ports
-
+import time
+import threading 
 ### check comm port availability 
 # List all available COM ports
 ports = serial.tools.list_ports.comports()
@@ -15,9 +16,11 @@ for port in ports:
     deviceList.append(port.device)
 
 # Connect to the vehicle
-master = mavutil.mavlink_connection(device=deviceList[0], baud=57600)  # or your connection string
+master = mavutil.mavlink_connection(device=deviceList[0], baud=57600) 
 master.wait_heartbeat()
 print("Heartbeat received")
+
+#time.sleep(3)
 
 root = tk.Tk()
 #get computers screen dimensions 
@@ -39,8 +42,8 @@ def run(updateParams):
 
         if ((param_name == 'HAP_SENSE') or (param_name == 'HAP_MULTIPLEX') or (param_name== 'HAP_DRV_EFFECT_T') or (param_name ==  'HAP_DRV_EFFECT_B')):
             param_type =  mavutil.mavlink.MAV_PARAM_TYPE_INT32
-            bytes_value = struct.pack('i', int(get_param_value))  
-            param_value = struct.unpack('f', bytes_value)[0]
+            bytes_value = struct.pack('i', int(get_param_value))  # convert python values into binary data (bytes
+            param_value = struct.unpack('f', bytes_value)[0] # convert binary data into python values 
 
         elif (param_name== 'HAP_MODE'):
             param_type = mavutil.mavlink.MAV_PARAM_TYPE_INT32
@@ -49,7 +52,7 @@ def run(updateParams):
             param_type = mavutil.mavlink.MAV_PARAM_TYPE_REAL32
             param_value = float(get_param_value)
         
-        print(f"{param_name}: {param_value}\n")
+        #print(f"{param_name}: {param_value}\n")
 
         # send updated parameters to px4
         master.mav.param_set_send(
@@ -58,7 +61,28 @@ def run(updateParams):
         param_name.encode('utf-8'),
         param_value,
         param_type)
-    
+
+param_names = [
+    'HAP_ACT_INT',
+    'HAP_AZIMUTH_MAX',
+    'HAP_AZIMUTH_MIN',
+    'HAP_DRV_EFFECT_B',
+    'HAP_DRV_EFFECT_T',
+    'HAP_ELEV_MAX',
+    'HAP_ELEV_MIN',
+    'HAP_MODE',
+    'HAP_MULTIPLEX',
+    'HAP_OFFSET',
+    'HAP_PITCH_MAX',
+    'HAP_PITCH_MIN',
+    'HAP_Q_FACTOR',
+    'HAP_ROLL_MAX',
+    'HAP_ROLL_MIN',
+    'HAP_SENSE',
+    'HAP_TRIG_TIMER',
+    'HAP_YAW_MAX',
+    'HAP_YAW_MIN'
+    ]
 
 #param description
 param_description = [
@@ -68,7 +92,7 @@ param_description = [
     '(bottom haptic waveform effect (1-123))',
     '(top haptic waveform effect (1-123))',
     '(maximum elevation angle (AVS))',
-    '(maximum elevation angle (AVS))',
+    '(minimum elevation angle (AVS))',
     '(haptic mode: IMU (0) or AVS (1))',
     '(using multiplexer, 1=enabled)',
     '(offset angle)',
@@ -80,68 +104,77 @@ param_description = [
     '(sense  (1 or -1))',
     '(trigger timer)',
     '(maximum yaw angle (IMU))',
-    '(maximum yaw angle (IMU))'
-
+    '(minimum yaw angle (IMU))'
 ]
 
-# Request ALL parameters
-master.mav.param_request_list_send(
-    master.target_system,
-    master.target_component
-)
+def getParams():
 
-# Receive all parameters
-getParams = {} # dictionary: key,value pairs
-while True:
-    message = master.recv_match(type='PARAM_VALUE', blocking=True,timeout=1)
-    if message is None:
-        break
-    if message.param_id.startswith("HAP_"):
-        #print(f"{message.param_id}: {message.param_value}")
+    storeParams = {} # dictionary: key,value pairs
+
+    for names in param_names:
+        #param_request_list_send() # requests ALL params 
+
+        # Request haptic parameters only
+        master.mav.param_request_read_send(
+        master.target_system,
+        master.target_component,
+        names.encode('utf-8'),
+        -1)
+
+        time.sleep(0.5)
+
+        message = master.recv_match(type='PARAM_VALUE', blocking=True,timeout=0.1)
+
+        if message is None:
+            break
+
+        print(f"{message.param_id}: {message.param_value}")
+
         if ((message.param_id == 'HAP_SENSE') or (message.param_id == 'HAP_MULTIPLEX') or (message.param_id == 'HAP_DRV_EFFECT_T') or (message.param_id ==  'HAP_DRV_EFFECT_B')) and (message.param_type == 6):
             bytes_value = struct.pack('f', message.param_value)  # Pack as float
             int_value = struct.unpack('i', bytes_value)[0]  # Unpack as signed int32
-            getParams[message.param_id] = int_value
+            storeParams[message.param_id] = int_value
 
         elif (message.param_id == 'HAP_MODE') and (message.param_type == 6):
-            getParams[message.param_id] =int(message.param_value)
+            storeParams[message.param_id] =int(message.param_value)
         else:
-            getParams[message.param_id] = message.param_value
-#print(getParams)
+            storeParams[message.param_id] = message.param_value
 
-# input specification labels 
-lbl = tk.Label(frame, text= 'HAPTIC PARAMETERS:') #, font = 'times 11 bold') #font = 'roman 10 bold'
-lbl.grid(row=0, column=0, sticky='w')
+    # root.after(delay_ms, function, *args)
+    root.after(0, display_params, storeParams) # update gui from background thread 
 
-updateParams ={}
-count = 2
-idx=0
-for name, value in getParams.items():  #for x, y in thisdict.items():
 
-    new = name + ' ' + param_description[idx]
-    #print(new)
+def display_params(storeParams):
 
-    # create Label to display text 
-    lbl5 = tk.Label(frame, text = new) # font = 'roman 11')
-    lbl5.grid(row=count+1,sticky = 'w')
+    lbl = tk.Label(frame, text= 'HAPTIC PARAMETERS:', font = 'times 11 bold') #font = 'roman 10 bold'
+    lbl.grid(row=0, column=0, sticky='w')
 
-    e = tk.Entry(frame)  # create Entry fields for user input
-    e.insert(0, value) #insert default param values 
+    updateParams ={}
+    idx=0
+    for name, value in storeParams.items():  #for x, y in thisdict.items():
 
-    e.grid(row=count+1, column=1, padx=5, pady=5)
-    updateParams[name]=e    # store user input with associated specification 
-                                # in a dictionary
-    count += 1
-    idx+=1
+        new = name + ' ' + param_description[idx]
+        
+        # create Label to display text 
+        lbl5 = tk.Label(frame, text = new) 
+        lbl5.grid(row=idx+1,sticky = 'w')
 
-# UPDATE button 
-updateButton = tk.Button(frame, text = 'UPDATE', bg ='gray', fg= 'black', padx=5, pady=5, command=lambda: [run(updateParams)]) 
-updateButton.grid(row=28, column=1, sticky='e')
+        e = tk.Entry(frame)  # create Entry fields for user input
+        e.insert(0, value) #insert default param values 
+
+        e.grid(row=idx+1, column=1, padx=5, pady=5)
+        updateParams[name]=e    # store user input with associated specification 
+                                    # in a dictionary
+        idx+=1
+
+    # UPDATE button 
+    updateButton = tk.Button(frame, text = 'UPDATE', bg ='gray', fg= 'black', padx=5, pady=5, command=lambda: [run(updateParams)]) 
+    updateButton.grid(row=idx+2, column=1, sticky='e')
+
+#background thread to get params 
+threading.Thread(target=getParams, daemon=True).start() 
 
 root.mainloop()
-
-
-
 
 ##############################
 
