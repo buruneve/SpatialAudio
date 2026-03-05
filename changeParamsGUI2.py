@@ -16,8 +16,8 @@ import matplotlib.pyplot as plt
 import queue
 import numpy as np
 import math
-from parameters_3Mar2026 import param_names   #parameters.py
-from parameters_3Mar2026 import param_description
+from parameters import param_names   #parameters.py
+from parameters import param_description
 
 from concurrent.futures import ThreadPoolExecutor
 from tkinter import font
@@ -201,8 +201,6 @@ ax5.add_patch(circle_inner2)
 ax5.set_xticks([])
 ax5.set_yticks([])
 
-canvas5.draw()
-background4 = canvas5.copy_from_bbox(ax5.bbox)  # snapshot BEFORE circles
 
 # circles for second plot
 circle_red3 = plt.Circle((0,0), 0.05, color='red', label='IMU')
@@ -213,7 +211,8 @@ ax5.add_patch(circle_red3)
 
 ax5.legend(handles=[circle_red3], loc='upper right', fontsize=8)
 
-
+canvas5.draw()
+background4 = canvas5.copy_from_bbox(ax5.bbox)  # snapshot BEFORE circles
 
 ##### SIDE VIEW
 # create frame
@@ -304,7 +303,7 @@ def run(updateParams):
 
     for param_name, entry_field in updateParams.items():
         get_param_value = entry_field.get()  #get() method: access/read content of Entry fields/user input
-
+#or (param_name == 'HAP_ENABLE')
         if ((param_name == 'HAP_SENSE_AVS_R') or (param_name== 'HAP_MODE')or (param_name == 'HAP_SENSE_AVS_L') or (param_name == 'HAP_SENSE_IMU')or(param_name == 'HAP_MULTIPLEX') or (param_name== 'HAP_DRV_EFFECT_T') or (param_name ==  'HAP_DRV_EFFECT_B')):
             param_type =  mavutil.mavlink.MAV_PARAM_TYPE_INT32
             bytes_value = struct.pack('i', int(get_param_value))  # convert python values into binary data (bytes
@@ -356,8 +355,8 @@ def getParams():
         
         print('getting parameters...')
         #print(f"{message.param_id}: {message.param_type}, {message.param_value}\n")
-
-        if ((message.param_id == 'HAP_SENSE_AVS_R')  or(message.param_id == 'HAP_MODE') or (message.param_id == 'HAP_SENSE_AVS_L') or (message.param_id == 'HAP_SENSE_IMU') or (message.param_id == 'HAP_MULTIPLEX') or (message.param_id == 'HAP_DRV_EFFECT_T') or (message.param_id ==  'HAP_DRV_EFFECT_B')) and (message.param_type == 6):
+# or (message.param_id == 'HAP_ENABLE') 
+        if ((message.param_id == 'HAP_SENSE_AVS_R') or (message.param_id == 'HAP_MODE') or (message.param_id == 'HAP_SENSE_AVS_L') or (message.param_id == 'HAP_SENSE_IMU') or (message.param_id == 'HAP_MULTIPLEX') or (message.param_id == 'HAP_DRV_EFFECT_T') or (message.param_id ==  'HAP_DRV_EFFECT_B')) and (message.param_type == 6):
             bytes_value = struct.pack('f', message.param_value)  # Pack as float
             int_value = struct.unpack('i', bytes_value)[0]  # Unpack as signed int32
             storeParams[message.param_id] = int_value
@@ -488,7 +487,7 @@ def updatePlots():
     
     #print(az, el, act)
 
-    if len(nodes) < 2:
+    if len(nodes) < 1:
         root.after(1, updatePlots)
         return  # wait until both nodes are known
 
@@ -502,7 +501,7 @@ def updatePlots():
         updateX_el = 1*np.sin(np.deg2rad(el))  #Y
     
     # right node 
-    if id == nodes[1]:
+    if id == nodes[0]:
         act_r = act
         updateYaz_r = 1*np.cos(np.deg2rad(az))  #X #az 
         updateXaz_r = 1*np.sin(np.deg2rad(az))  #Y
@@ -512,20 +511,25 @@ def updatePlots():
     # restore background of head plots; only copies pixels back
     canvas3.restore_region(background2)   
     canvas4.restore_region(background3)   
-   # canvas5.restore_region(background4)
+    canvas5.restore_region(background4)
     
     
     #flipped to start at 90 degree and rotate clockwise
-    updateYyaw = 1.25*np.cos(yaw)  #X #yaw
-    updateXyaw = 1.25*np.sin(yaw)  #Y
+    updateYyaw = 1.25*np.cos(np.deg2rad(yaw))  #X #yaw
+    updateXyaw = 1.25*np.sin(np.deg2rad(yaw))  #Y
 
     # circle_blue.set_center((updateXyaw, updateYyaw))
     # ax3.draw_artist(circle_blue)
-    #canvas3.blit(ax3.bbox) 
+    # canvas3.blit(ax3.bbox) 
 
     # circle_red2.set_center((updateX_el, updateY_el))
     # ax4.draw_artist(circle_red2)   # redraws circle in new location 
     # canvas4.blit(ax4.bbox) 
+
+    circle_red3.set_center((updateXyaw, updateYyaw))
+    ax5.draw_artist(circle_red3)
+    canvas5.blit(ax5.bbox)
+
 
     if act_l > 25 or act_r > 25:
         circle_red.set_center((updateXaz_r, updateYaz_r))  # set_center() updates/moves circle
@@ -545,7 +549,7 @@ def updatePlots():
         canvas4.blit(ax4.bbox) 
 
         # circle_red3.set_center((updateXyaw, updateYyaw))
-        # #circle_green3.set_center((updateXaz_l, updateYaz_l))
+        # # #circle_green3.set_center((updateXaz_l, updateYaz_l))
         # ax5.draw_artist(circle_red3)
         # #ax5.draw_artist(circle_green3)
         # canvas5.blit(ax5.bbox)
