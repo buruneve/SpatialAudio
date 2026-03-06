@@ -78,7 +78,7 @@ screen_height = root.winfo_screenheight()  #print('screen_height:', screen_heigh
 
 # make the font bigger globally
 default_font = tk.font.nametofont("TkDefaultFont")
-default_font.configure(size=12)
+default_font.configure(size=18)
 root.option_add("*Font", default_font) 
 
 #root.geometry(f"{int(screen_width*.8)}" + 'x' + f"{int(screen_height*.9)}")
@@ -486,8 +486,13 @@ def updatePlots():
          return
     
     #print(az, el, act)
+    if updateParams:
+        try: 
+            act0 = int(updateParams['HAP_ACT_INT'].get())
+        except ValueError:
+            act0 = 0
 
-    if len(nodes) < 1:
+    if len(nodes) < 2:
         root.after(1, updatePlots)
         return  # wait until both nodes are known
 
@@ -501,7 +506,7 @@ def updatePlots():
         updateX_el = 1*np.sin(np.deg2rad(el))  #Y
     
     # right node 
-    if id == nodes[0]:
+    if id == nodes[1]:
         act_r = act
         updateYaz_r = 1*np.cos(np.deg2rad(az))  #X #az 
         updateXaz_r = 1*np.sin(np.deg2rad(az))  #Y
@@ -531,7 +536,7 @@ def updatePlots():
     canvas5.blit(ax5.bbox)
 
 
-    if act_l > 25 or act_r > 25:
+    if act_l > act0 or act_r > act0:
         circle_red.set_center((updateXaz_r, updateYaz_r))  # set_center() updates/moves circle
         circle_green.set_center((updateXaz_l, updateYaz_l))
 
