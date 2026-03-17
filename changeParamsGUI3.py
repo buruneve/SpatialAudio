@@ -425,6 +425,9 @@ line2, = intAx.plot([], [], 'r', animated=True)
 line3, = azAx.plot([], [], 'g', animated=True) #, label='Azimuth' 
 line4, = azAx.plot([], [], 'm', animated=True) #
 
+intAx.set_ylim(0,60)#min(actv1+actv2), max(actv1+actv2))   
+azAx.set_ylim(0,360)
+
 intFig.tight_layout()
 
 #intFig.canvas.draw() 
@@ -700,7 +703,7 @@ def updatePlots():
         except ValueError:
             act0= 0  # fallback if value is invalid/incomplete
 
-    if len(nodes) < 2:
+    if len(nodes) < 1:
         root.after(1, updatePlots)
         return  # wait until both nodes are known
 
@@ -714,7 +717,7 @@ def updatePlots():
         updateX_el = 1.15*np.sin(np.deg2rad(el))  #Y
     
     # right node 
-    if id == nodes[1]:
+    if id == nodes[0]:
         act_r = act
         updateYaz_r = 1.15*np.cos(np.deg2rad(az))  #X #az 
         updateXaz_r = 1.15*np.sin(np.deg2rad(az))  #Y
@@ -1048,7 +1051,7 @@ def plotActiveIntensity():
         except ValueError:
             act0= 0  # fallback if value is invalid/incomplete
 
-    if len(actNodes) < 2:
+    if len(actNodes) < 1:
         root.after(1, plotActiveIntensity)
         return  # wait until both nodes are known
 
@@ -1058,28 +1061,31 @@ def plotActiveIntensity():
         actv1.append(act)
         az1.append(az)
 
-    if id == actNodes[1]:  # right node
+    if id == actNodes[0]:  # right node
         act_r = act
         tt2.append(t)
         actv2.append(act)
         az2.append(az)
  
     # --- update active intensity plot ---
-    line1.set_data(tt1, actv1)
-    line2.set_data(tt2, actv2)
+    line1.set_data(np.array(tt1), np.array(actv1))
+    line2.set_data(np.array(tt2), np.array(actv2))
     # intAx.relim()
     # intAx.autoscale()
-  
+    az1thresh = np.array(az1)
+    thresh = 30
+    az1thresh[np.array(actv1)<thresh]=None
+
+    az2thresh = np.array(az2)
+    az2thresh[np.array(actv2)<thresh]=None
     # --- update azimuth plot ---
-    line3.set_data(tt1, az1)
-    line4.set_data(tt2, az2)
+    line3.set_data(np.array(tt1), az1thresh)
+    line4.set_data(np.array(tt2), az2thresh)
     # azAx.relim()
     # azAx.autoscale()
 
     if len(tt1) and len(tt2) > 1:
         intAx.set_xlim(min(tt1 +tt2), max(tt1 +tt2 ))
-        intAx.set_ylim(min(actv1+actv2), max(actv1+actv2))   
-        azAx.set_ylim(min(az1+az2), max(az1+az2))
         azAx.set_xlim(min(tt1+tt2), max(tt1+tt2))
         
         #intAx.set_xlim(0, 100)
@@ -1102,8 +1108,8 @@ def plotActiveIntensity():
     intCanvas.blit(azAx.bbox)
 
 
-    intCanvas.draw_idle()
-    intCanvas.flush_events() 
+    #intCanvas.draw_idle()
+    #intCanvas.flush_events() 
 
     root.after(1, plotActiveIntensity)  # Schedule next update
 
