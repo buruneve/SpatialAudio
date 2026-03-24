@@ -733,7 +733,7 @@ def logData(end_timer):
     
     log_running = False
     #startLog()
-    root.after(0, startLog)  # schedule on main thread since startLog touches tkinter widgets
+    root.after(0, lambda: logButton.config(text='LOG DATA'))  # reset button on main thread
 
 log_running= False
 def startLog():
