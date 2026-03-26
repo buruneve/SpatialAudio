@@ -2,33 +2,6 @@
 
 " parameter names and decsriptions"
 
-# hap_params = [
-#     'HAP_ACT_INT',
-#     'HAP_AZIMUTH_MAX',
-#     'HAP_AZIMUTH_MIN',
-#     'HAP_DRV_EFFECT_B',
-#     'HAP_DRV_EFFECT_T',
-#     'HAP_ELEV_MAX',
-#     'HAP_ELEV_MIN',
-#     #'HAP_ENABLE',
-#     'HAP_MODE',
-#     'HAP_MULTIPLEX',
-#     'HAP_OFFSET_AVS_L',
-#     'HAP_OFFSET_AVS_R',
-#     'HAP_OFFSET_IMU',
-#     'HAP_PITCH_MAX',
-#     'HAP_PITCH_MIN',
-#     'HAP_Q_FACTOR',
-#     'HAP_ROLL_MAX',
-#     'HAP_ROLL_MIN',
-#     'HAP_SENSE_AVS_L',
-#     'HAP_SENSE_AVS_R',
-#     'HAP_SENSE_IMU',
-#     'HAP_TRIG_TIMER',
-#     'HAP_YAW_MAX',
-#     'HAP_YAW_MIN'
-#   ]
-
 #param description
 hap_description = [
     '(active intensity)',
@@ -38,7 +11,7 @@ hap_description = [
     '(top haptic waveform effect (1-123))',
     '(maximum elevation angle (AVS))',
     '(minimum elevation angle (AVS))',
-    #'(enable haptic feedback, 1=enable)',
+    '(use roll or pitch, 0=roll, 1=pitch)',
     '(haptic mode: IMU (0) or AVS (1))',
     '(using multiplexer, 1=enabled)',
     '(offset left AVS angle)',
@@ -46,7 +19,7 @@ hap_description = [
     '(offset IMU angle)',
     '(maximum pitch angle (IMU))',
     '(minimum pitch angle (IMU))',
-    '(q-factor)',
+    # '(q-factor)',
     '(maximum roll angle about x-axis (IMU))',
     '(minimum roll angle about x-axis (IMU))',
     '(sense left AVS (1 or -1))',
@@ -66,7 +39,7 @@ hap_params = [
     'HAP_DRV_EFFECT_T',
     'HAP_ELEV_MAX',
     'HAP_ELEV_MIN',
-    #'HAP_ENABLE',
+    'HAP_IMU_UP_DOWN',
     'HAP_MODE',
     'HAP_MULTIPLEX',
     'HAP_OFFSET_AVS_L',
@@ -74,7 +47,7 @@ hap_params = [
     'HAP_OFFSET_IMU',
     'HAP_PITCH_MAX',
     'HAP_PITCH_MIN',
-    'HAP_Q_FACTOR',
+    # 'HAP_Q_FACTOR',
     'HAP_ROLL_MAX',
     'HAP_ROLL_MIN',
     'HAP_SENSE_AVS_L',
@@ -92,7 +65,7 @@ hap_params = [
     'AVS_EVT_EVT_WIN',	
     'AVS_EVT_NUM_SRC',	
     'AVS_EVT_REL_DB',
-    'AVS_EVT_TRG_HOLD',	
+    #'AVS_EVT_TRG_HOLD',	
     #'AVS_FFT_DEC',
     #'AVS_FFT_ENCRYPT',
     #'AVS_FFT_LONG',
@@ -103,7 +76,9 @@ hap_params = [
     'AVS_PK_MIN_D_DB',
     'AVS_PK_MIN_HGHT',
     'AVS_PK_NUM_HARM',
-    'AVS_PK_NUM_PEAK',	
+    #'AVS_PK_NUM_PEAK',	
     'AVS_SEND_ARES',
     'AVS_TOP_NODE_ID',
+    #
+    #'SDLOG_MODE'
     ]
