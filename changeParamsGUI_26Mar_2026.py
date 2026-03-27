@@ -1011,7 +1011,6 @@ def startFPV():
         fpv_running = True
         plotButton.config(text='RUNNING...')
 
-        print('check fpv stop event START:', fpv_stop_event.is_set())
         threading.Thread(target=getFPV_data, daemon=True).start() #fpv thread to acquire data in background
     
         root.after(50, updatePlots) 
