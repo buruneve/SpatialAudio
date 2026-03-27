@@ -1,8 +1,7 @@
 #parameters.py
 
-" parameter names and decsriptions"
+" parameter names and descriptions"
 
-#param description
 hap_description = [
     '(active intensity)',
     '(maximum azimuth angle (AVS))',
@@ -19,7 +18,6 @@ hap_description = [
     '(offset IMU angle)',
     '(maximum pitch angle (IMU))',
     '(minimum pitch angle (IMU))',
-    # '(q-factor)',
     '(maximum roll angle about x-axis (IMU))',
     '(minimum roll angle about x-axis (IMU))',
     '(sense left AVS (1 or -1))',
@@ -30,8 +28,27 @@ hap_description = [
     '(minimum yaw angle (IMU))'
 ]
 
-#avs_params = [
-hap_params = [
+avs_description = [
+    '(bottom AVS node ID)',
+    '(angular resolution)',
+    '(background SIL meas mode)',
+    '(background SIL threshold dB)',
+    '(smoothing time constant)',
+    '(event window)',
+    '(number sources)',
+    '(event threshold)',
+    '(FFT number of bins)',
+    '(FFT start bin)',
+    '(FFT Hann window flag)',
+    '(minimum angle change in degrees)',
+    '(minimum peak change in dB)',
+    '(minimum peak height in dB)',
+    '(RPM harmonics)',
+    '(send commands to ARES, default: 0 = disabled)',
+    '(top AVS node ID)'
+]
+
+all_params = [
     'HAP_ACT_INT',
     'HAP_AZIMUTH_MAX',
     'HAP_AZIMUTH_MIN',
@@ -47,7 +64,6 @@ hap_params = [
     'HAP_OFFSET_IMU',
     'HAP_PITCH_MAX',
     'HAP_PITCH_MIN',
-    # 'HAP_Q_FACTOR',
     'HAP_ROLL_MAX',
     'HAP_ROLL_MIN',
     'HAP_SENSE_AVS_L',
@@ -65,10 +81,6 @@ hap_params = [
     'AVS_EVT_EVT_WIN',	
     'AVS_EVT_NUM_SRC',	
     'AVS_EVT_REL_DB',
-    #'AVS_EVT_TRG_HOLD',	
-    #'AVS_FFT_DEC',
-    #'AVS_FFT_ENCRYPT',
-    #'AVS_FFT_LONG',
     'AVS_FFT_NUM_BINS',
     'AVS_FFT_STRT_BIN',
     'AVS_FFT_WINDOW',
@@ -76,9 +88,6 @@ hap_params = [
     'AVS_PK_MIN_D_DB',
     'AVS_PK_MIN_HGHT',
     'AVS_PK_NUM_HARM',
-    #'AVS_PK_NUM_PEAK',	
     'AVS_SEND_ARES',
     'AVS_TOP_NODE_ID',
-    #
-    #'SDLOG_MODE'
     ]

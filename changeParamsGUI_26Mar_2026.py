@@ -19,8 +19,9 @@ import matplotlib.pyplot as plt
 import queue
 from collections import deque 
 import numpy as np
-from parameters import hap_params   #parameters.py
+from parameters import all_params   #parameters.py
 from parameters import hap_description
+from parameters import avs_description
 
 
 # set mavlink dialect
@@ -89,17 +90,27 @@ root = tk.Tk()
 root.title("Flight Controller and ARES Control Panel")
 
 # #get computers screen dimensions 
-screen_width = root.winfo_screenwidth();   print('screen_width:', screen_width )
-screen_height = root.winfo_screenheight();  print('screen_height:', screen_height)
+screen_width = root.winfo_screenwidth();   #print('screen_width:', screen_width )
+screen_height = root.winfo_screenheight();  #print('screen_height:', screen_height)
 # #root.geometry("%dx%d" % (screen_width, screen_height))
 # #root.state('zoomed')
+root.geometry("+200+100") 
+
+# # set minimum window size value
+# root.minsize(1100, 750)
+
+# # set maximum window size value
+# root.maxsize(1100, 750)
 
 # make the font bigger globally
 default_font = tk.font.nametofont("TkDefaultFont")
-default_font.configure(size=20)
+default_font.configure(size=18)
 root.option_add("*Font", default_font) 
 
-# root.resizable(False, False)
+root.resizable(False, False)
+
+# screen_width: 1920
+# screen_height: 1080
 
 #root.resizable(True, True)
 #root.geometry(f"{int(screen_width*.5)}" + 'x' + f"{int(screen_height*.8)}")
@@ -495,8 +506,7 @@ def getParams():
     storeHapParams = {} # dictionary: key,value pairs
     storeAvsParams = {}
 
-    print()
-    for names in hap_params:
+    for names in all_params:
         #param_request_list_send() # requests ALL params 
 
         # Request haptic parameters only
@@ -573,9 +583,10 @@ def display_params(storeHapParams,storeAvsParams):
 
     updateAvsParams ={}
     avs_idx=0
+
     for name, value in storeAvsParams.items(): 
 
-        new = name  #+ ' ' + hap_description[idx]
+        new = name  + ' ' + avs_description[avs_idx]
         
         # create Label to display text 
         avslbl = tk.Label(aresFrame, text = new) 
@@ -589,13 +600,17 @@ def display_params(storeHapParams,storeAvsParams):
                                     # in a dictionary
         avs_idx+=1
 
-    # UPDATE button 
+    # UPDATE Haptic params button 
     updateButton = tk.Button(frame, text = 'UPDATE', bg ='gray', fg= 'black', padx=5, pady=5, command=lambda: [run(updateHapParams)]) 
-    updateButton.grid(row=idx+2, column=1, sticky='e', pady=10, padx=10)
+    updateButton.grid(row=idx+1, column=1, sticky='e', pady=5, padx=5)
 
-    # UPDATE button 
+    # UPDATE ARES params button 
     updateAvsButton = tk.Button(aresFrame, text = 'UPDATE', bg ='gray', fg= 'black', padx=5, pady=5, command=lambda: [run2(updateAvsParams)]) 
     updateAvsButton.grid(row=avs_idx+2, column=1, sticky='e', pady=10, padx=10)
+
+    # sync time 
+    sync_timeButton = tk.Button(frame, text = 'SYNC TIME', bg ='gray', fg= 'black', padx=5, pady=5, command=lambda: [sync_time()])
+    sync_timeButton.grid(row=idx+1, column=1, sticky='w', pady=5, padx=5)
 
 def set_timer():
     
@@ -624,6 +639,7 @@ def sync_time(end_timer):
             connection.mav.system_time_send(time_unix_usec, 0)
 
         time.sleep(1.0)  # Send at 1 Hz
+
 
 def logData(end_timer):
     global log_running
@@ -757,9 +773,6 @@ def startLog():
         logButton.config(text='LOG DATA') 
         threading.Thread(target=stopSensorStreams, daemon=True).start()
 
-# end_timer = set_timer()
-# threading.Thread(target=sync_time,args=(end_timer,), daemon=True).start() 
-
 rowFrame = tk.Frame(frame2) #Create a sub-frame inside intFrame to hold the row
 rowFrame.grid(row=2, column=1) 
 
@@ -768,7 +781,6 @@ timerlbl.grid(row=1, column=0, padx=5, pady=5) # pack(side = 'right', padx=5, pa
 
 # UPDATE button 
 logButton = tk.Button(rowFrame, text = 'LOG DATA', bg ='gray', fg= 'black', padx=5, pady=5, command= startLog) #lambda: startLog() allows us to pass arguments to the function 
-#plotButton.pack(side='bottom', pady=10, padx=10)
 logButton.grid(row=2, column=1, padx=5, pady=5)
 
 timerEntry = tk.Entry(rowFrame)  # create Entry fields for user input
@@ -1134,6 +1146,10 @@ def startSpectrogram():
 
     if not spec_running:
         spec_running = True
+
+        spec.fill(0)  # clear old data
+        spec2.fill(0)
+
         specButton.config(text='RUNNING..')  # re-enable plot button when spectrogram is stopped
         threading.Thread(target=getSpecData, daemon=True).start() #restart fpv thread to acquire data in background
         
@@ -1184,10 +1200,15 @@ def startTrajectory():
 
     if not traj_running:
         traj_running = True
+
+        north_data.clear(); east_data.clear(); down_data.clear()  # clear old data  
+        ned_line.set_data([], []) # clear old line data
+        ned_line.set_3d_properties([]) 
+        
         trajButton.config(text='RUNNING..')  # re-enable plot button when spectrogram is stopped
         threading.Thread(target=getNED_data, daemon=True).start() #restart fpv thread to acquire data in background
         
-        root.after(50, plotTrajectory)
+        root.after(50, plotTrajectory) 
 
     else:
         traj_running = False
@@ -1421,19 +1442,17 @@ def stopSensorStreams():
     connection.mav.send(message)
     time.sleep(0.1)  # let it settle
 
-# Time synchronization thread
+# Time synchronization for button 
 def sync_time():
     """Send SYSTEM_TIME messages to flight controller"""
 
     print()
-    print('sync time once at start ..')
+    print('-- time synced --')
     print()
 
-    #while True: # 
     time_unix_usec = int(time.time() * 1e6)     # Get current UTC time in microseconds
     connection.mav.system_time_send(time_unix_usec, 0) # send time to FC
 
-    #time.sleep(1.0)  # Send at 1 Hz
 
 def runThreads():
 
