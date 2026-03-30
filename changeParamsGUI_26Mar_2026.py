@@ -1,7 +1,5 @@
 #changeParams.py
 
-from doctest import master 
-
 from pymavlink import mavutil
 import tkinter as tk
 from tkinter import ttk
@@ -88,7 +86,6 @@ print()
 root = tk.Tk()
 
 root.title("Flight Controller and ARES Control Panel")
-
 # #get computers screen dimensions 
 screen_width = root.winfo_screenwidth();   #print('screen_width:', screen_width )
 screen_height = root.winfo_screenheight();  #print('screen_height:', screen_height)
@@ -205,7 +202,7 @@ ax3.add_patch(circle_red_az_r)
 circle_green_az_l = plt.Circle((0,0), 0.05, color='green', label = 'left node')
 ax3.add_patch(circle_green_az_l)
 
-ax3.legend(handles=[circle_red_az_r, circle_green_az_l], loc='upper right', fontsize=8)
+ax3.legend(handles=[circle_red_az_r, circle_green_az_l], loc='upper right', fontsize=10)
 
 canvas3.draw()  # initial draw
 background2 = canvas3.copy_from_bbox(ax3.bbox) # snapshot BEFORE circles
@@ -248,7 +245,7 @@ circle_red_yaw = plt.Circle((0,0), 0.05, color='red', label='IMU')
 ax5.add_patch(circle_red_yaw)
 
 
-ax5.legend(handles=[circle_red_yaw], loc='upper right', fontsize=8)
+ax5.legend(handles=[circle_red_yaw], loc='upper right', fontsize=10)
 
 canvas5.draw()
 background4 = canvas5.copy_from_bbox(ax5.bbox)  # snapshot BEFORE circles
@@ -354,12 +351,18 @@ spec2 = np.zeros((60,16))
 
 fig, ax = plt.subplots(2,1,figsize=(10, 8))
 im0 = ax[0].imshow(spec, aspect='auto', origin='lower',cmap='magma',interpolation='nearest', animated=True) #initialize and show image once
-ax[0].set_ylabel("Time"); ax[0].set_xlabel("Mel bands"); ax[0].set_title("Real-time Mel Spectrogram")
-im0.set_clim(vmin=0, vmax=100)  # rescale colors #40, 90
+ax[0].set_ylabel("Time",fontsize=15); ax[0].set_xlabel("Mel bands",fontsize=15); ax[0].set_title("Real-time Mel Spectrogram", fontsize=19)
+im0.set_clim(vmin=0, vmax=100)  # rescale colors 
+# set font size for both major and minor ticks
+ax[0].tick_params(axis='both', which='major', labelsize=13)
+# ax[0].tick_params(axis='both', which='minor', labelsize=9)
 
 im1 = ax[1].imshow(spec, aspect='auto', origin='lower',cmap='magma',interpolation='nearest', animated=True) #initialize and show image once
-ax[1].set_ylabel("Time"); ax[1].set_xlabel("Mel bands"); ax[1].set_title("Real-time Mel Spectrogram")
-im1.set_clim(vmin=0, vmax=100)  # rescale colors #40, 90
+ax[1].set_ylabel("Time",fontsize=15); ax[1].set_xlabel("Mel bands", fontsize=15); ax[1].set_title("Real-time Mel Spectrogram", fontsize=19)
+im1.set_clim(vmin=0, vmax=100) 
+# set font size for both major and minor ticks
+ax[1].tick_params(axis='both', which='major', labelsize=13)
+# ax[1].tick_params(axis='both', which='minor', labelsize=9)
 
 canvas = FigureCanvasTkAgg(fig, master=specFrame)
 canvas_widget = canvas.get_tk_widget()
@@ -380,18 +383,18 @@ backgroundd = fig.canvas.copy_from_bbox(ax[1].bbox)
 # ----------- NED plot ---------------------------------------
 
 # Create NED plot
-figNED = plt.figure(figsize=(8,8))
+figNED = plt.figure(figsize=(9,9))
 axNED = figNED.add_subplot(111, projection='3d')
 canvasNED = FigureCanvasTkAgg(figNED, master=nedFrame)
 canvasNED.get_tk_widget().pack()
 
-axNED.set_title("NED Trajectory")
-axNED.set_xlabel("North")
-axNED.set_ylabel("East")
-axNED.set_zlabel("Down")
+axNED.set_title("NED Trajectory", fontsize=18)
+axNED.set_xlabel("North", fontsize=14)
+axNED.set_ylabel("East", fontsize=14)
+axNED.set_zlabel("Down", fontsize=14)
 axNED.grid(True)
-#axNED.set_aspect("equal")
-#axNED.legend()
+axNED.tick_params(axis='both', which='major', labelsize=13)
+#figNED.tight_layout() 
 
 ned_line, = axNED.plot([], [], [], color='blue')  # create empty 3d line object
 
@@ -416,13 +419,13 @@ intFig, (intAx, azAx) = plt.subplots(2, 1, figsize=(8, 8)) # one figure containi
 intCanvas = FigureCanvasTkAgg(intFig, master=intFrame) #create canvas for figure
 intCanvas.get_tk_widget().pack()
 
-intAx.set_xlabel("Time")
-intAx.set_ylabel("Active intensity")
-intAx.set_title("Active Intensity Over Time")
+intAx.set_xlabel("Time", fontsize=13)
+intAx.set_ylabel("Active intensity", fontsize=13)
+intAx.set_title("Active Intensity Over Time", fontsize=18)
 
-azAx.set_xlabel("Time")
-azAx.set_ylabel("Azimuth")
-azAx.set_title("Azimuth Over Time")
+azAx.set_xlabel("Time", fontsize=13)
+azAx.set_ylabel("Azimuth", fontsize=13)
+azAx.set_title("Azimuth Over Time", fontsize=18)
 
 # # create empty line objects
 line1, = intAx.plot([], [], 'b')
@@ -432,6 +435,9 @@ line4, = azAx.plot([], [], 'm')
 
 intAx.set_ylim(0,60)
 azAx.set_ylim(0,360)
+
+intAx.tick_params(axis='both', which='major', labelsize=12)
+azAx.tick_params(axis='both', which='major', labelsize=12)
 
 intFig.tight_layout()
 
@@ -543,8 +549,6 @@ def getParams():
             int_value = struct.unpack('i', bytes_value)[0]  # Unpack as signed int32
             storeAvsParams[message.param_id] = int_value
 
-    #print(storeAvsParams)
-
     # root.after(delay_ms, function, *args)
     print()
     print('---- parameters displayed in GUI ----')
@@ -601,16 +605,16 @@ def display_params(storeHapParams,storeAvsParams):
         avs_idx+=1
 
     # UPDATE Haptic params button 
-    updateButton = tk.Button(frame, text = 'UPDATE', bg ='gray', fg= 'black', padx=5, pady=5, command=lambda: [run(updateHapParams)]) 
-    updateButton.grid(row=idx+1, column=1, sticky='e', pady=5, padx=5)
+    updateButton = tk.Button(frame, text = 'UPDATE', bg ='gray', fg= 'black', padx=2, pady=2, command=lambda: [run(updateHapParams)]) 
+    updateButton.grid(row=idx+1, column=1, sticky='e', pady=3, padx=3) 
 
     # UPDATE ARES params button 
     updateAvsButton = tk.Button(aresFrame, text = 'UPDATE', bg ='gray', fg= 'black', padx=5, pady=5, command=lambda: [run2(updateAvsParams)]) 
     updateAvsButton.grid(row=avs_idx+2, column=1, sticky='e', pady=10, padx=10)
 
     # sync time 
-    sync_timeButton = tk.Button(frame, text = 'SYNC TIME', bg ='gray', fg= 'black', padx=5, pady=5, command=lambda: [sync_time()])
-    sync_timeButton.grid(row=idx+1, column=1, sticky='w', pady=5, padx=5)
+    sync_timeButton = tk.Button(frame, text = 'SYNC TIME', bg ='gray', fg= 'black', padx=2, pady=2, command=lambda: [sync_time()]) #padx 
+    sync_timeButton.grid(row=idx+1, column=1, sticky='w', pady=3, padx=3)
 
 def set_timer():
     
@@ -660,7 +664,7 @@ def logData(end_timer):
 
     # ------ write to CSV (logging) ------
 
-    fieldnames = ['node_id','time_utc_usec', 'active_intensity', 'azimuth', 'elevation', 'yaw', 'pitch','roll', 'north', 'east', 'down']
+    fieldnames = ['node_id','time_utc_usec', 'active_intensity', 'q_factor','histogram_count', 'azimuth', 'elevation', 'yaw', 'pitch','roll', 'north', 'east', 'down']
     timestamp_str = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
     csv_file_name = f"{timestamp_str}.csv"
 
@@ -724,6 +728,10 @@ def logData(end_timer):
             east = msg.east
             down = msg.down
 
+            hist_count = msg.histogram_count
+            q_factor = msg.q_factor
+
+
             #  Thread-safe CSV write
             #  automatically acquires and releases a lock 
             with csv_lock: 
@@ -731,6 +739,8 @@ def logData(end_timer):
                     'node_id': id,
                     'time_utc_usec': t,
                     'active_intensity': act,
+                    'q_factor': q_factor,
+                    'histogram_count': hist_count,
                     'azimuth': az, 
                     'elevation': el,
                     'yaw': yaw,
@@ -940,7 +950,7 @@ def updatePlots():
         
         if id == nodes[0]:
             act_l = act
-            updateYaz_l = 1.15*np.cos(np.deg2rad(az))  #X #az 
+            updateYaz_l = 1.15*np.cos(np.deg2rad(az))  #X 
             updateXaz_l = 1.15*np.sin(np.deg2rad(az))  #Y
 
             updateY_el = 1.15*np.cos(np.deg2rad(el))  #X 
@@ -949,9 +959,8 @@ def updatePlots():
         if id == nodes[1]:
             act_r = act
             updateYaz_r = 1.15*np.cos(np.deg2rad(az))  #X #az 
-            updateXaz_r = 1.15*np.sin(np.deg2rad(az))  #Y
+            updateXaz_r = 1.15*np.sin(np.deg2rad(az))  
 
-    #fig.canvas.restore_region(background) 
     # restore background of head plots; only copies pixels back
     canvas3.restore_region(background2)   
     canvas4.restore_region(background3)   
@@ -1022,9 +1031,7 @@ def startFPV():
 
         threading.Thread(target=stopSensorStreams, daemon=True).start()
 
-# UPDATE button 
 plotButton = tk.Button(frame2, text = 'PLOT', bg ='gray', fg= 'black', padx=5, pady=5, command=startFPV) #lambda: [updatePlots()]) 
-#plotButton.pack(side='bottom', pady=10, padx=10)
 plotButton.grid(row=2, column=0, padx=5, pady=5)
 
 specNodes = []
@@ -1216,7 +1223,6 @@ def startTrajectory():
 
         threading.Thread(target=stopSensorStreams, daemon=True).start()  #stop streams in background to avoid blocking GUI
 
-# UPDATE button 
 trajButton = tk.Button(nedFrame, text = 'PLOT TRAJECTORY', bg ='gray', fg= 'black', padx=5, pady=5, command= startTrajectory)  
 trajButton.pack(side='bottom', pady=5, padx=10)
 
