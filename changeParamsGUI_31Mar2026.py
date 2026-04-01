@@ -431,6 +431,10 @@ intCanvas.draw()  # draw once fully
 max_data = 100 
 actv1 = deque(maxlen=max_data) 
 actv2 = deque(maxlen=max_data)
+hist1 = deque(maxlen=max_data) 
+hist2 = deque(maxlen=max_data)
+qfct1 = deque(maxlen=max_data) 
+qfct2 = deque(maxlen=max_data)
 tt1 = deque(maxlen=max_data)
 tt2 = deque(maxlen=max_data)
 az1 = deque(maxlen=max_data)
@@ -1342,6 +1346,8 @@ def plotActiveIntensity():
                 tt1.append(t_elapsed)
                 actv1.append(act)
                 az1.append(az)
+                hist1.append(hst_l)
+                qfct1.append(q_factor_l)
 
         else:
             if len(actNodes) < 2:
@@ -1352,13 +1358,20 @@ def plotActiveIntensity():
                 hst_l = hist_count
                 tt1.append(t_elapsed)
                 actv1.append(act)
+                hist1.append(hst_l)
+                qfct1.append(q_factor_l)
+                
                 az1.append(az)
+
             if id == actNodes[1]:
                 act_r = act
                 q_factor_r = q_factor
                 hst_r = hist_count
                 tt2.append(t_elapsed)
                 actv2.append(act)
+                hist2.append(hst_r)
+                qfct2.append(q_factor_r)
+
                 az2.append(az)
 
     # only redraw when we actually received new data
@@ -1368,20 +1381,27 @@ def plotActiveIntensity():
 
         az1thresh = np.array(az1, dtype=float)
 
-        print(threshAct, threshQ, threshHst)
+        # print(act, q_factor, hist_count)
         # plot azimuth point when exceeding all 3 thresholds 
-        if (q_factor_l > threshQ) and (hst_l > threshHst) and (act_l > threshAct):
-            az1thresh[np.array(actv1) < threshAct] = np.nan
-            line3.set_data(np.array(tt1), az1thresh)
+        #if (q_factor_l > threshQ) and (hst_l > threshHst) and (act_l > threshAct):
+        az1thresh[np.array(actv1) < threshAct] = np.nan
+        az1thresh[np.array(hist1) < threshHst] = np.nan
+        az1thresh[np.array(qfct1) < threshQ] = np.nan
+
+        line3.set_data(np.array(tt1), az1thresh)
 
         if len(actNodes) >= 2: 
             line2.set_data(np.array(tt2), np.array(actv2))
 
             az2thresh = np.array(az2, dtype=float)
 
-            if (act_r and act_l > threshAct) and (q_factor_r and q_factor_l > threshQ) and (hst_r and hst_l > threshHst):
-                az2thresh[np.array(actv2) < threshAct] = np.nan
-                line4.set_data(np.array(tt2), az2thresh)
+            #if (act_r and act_l > threshAct) and (q_factor_r and q_factor_l > threshQ) and (hst_r and hst_l > threshHst):
+            az2thresh[np.array(actv2) < threshAct] = np.nan
+            az2thresh[np.array(hist2) < threshHst] = np.nan
+            az2thresh[np.array(qfct2) < threshQ] = np.nan
+
+
+            line4.set_data(np.array(tt2), az2thresh)
 
         # --- sliding x-axis window ---
         curr_time = max( # current time is the max of the most recent timestamps from each node (or 0 if no data)
@@ -1401,7 +1421,7 @@ def plotActiveIntensity():
         # full redraw so axes update
         intCanvas.draw_idle()
 
-    root.after(16, plotActiveIntensity)  # give time for GUI to update
+    root.after(1, plotActiveIntensity)  # give time for GUI to update
 
 
 actv_running = False
